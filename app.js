@@ -1,4 +1,4 @@
-// Default initial listings with pre-populated locations
+// Initial Mock Listings with Location Addresses and Geolocation Coordinates
 const defaultItems = [
     {
         id: "1",
@@ -6,10 +6,11 @@ const defaultItems = [
         category: "Electronics",
         price: 2500,
         image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500",
-        description: "Great condition, minor scratches on headband. Battery lasts 30h.",
-        wanted: "Mechanical Keyboard or Gaming Mouse",
+        description: "Great condition, minor scratches. Battery lasts 30h.",
+        wanted: "Mechanical Keyboard",
         sellerName: "Sarah M.",
-        address: "Govan Mbeki Avenue, Port Elizabeth",
+        sellerEmail: "sarah@example.com",
+        location: "Central, Port Elizabeth",
         lat: -33.9608,
         lng: 25.6022,
         status: "OPEN",
@@ -21,11 +22,12 @@ const defaultItems = [
         category: "Electronics",
         price: 5000,
         image: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=500",
-        description: "Includes 18-55mm lens and carrying bag. Barely used, shutter count under 2000.",
-        wanted: "iPad / Tablet or Smartwatch",
+        description: "Includes 18-55mm lens. Shutter count under 2000.",
+        wanted: "iPad / Tablet",
         sellerName: "Zipho D.",
-        address: "2 Mingo Street, Port Elizabeth",
-        lat: -33.9180,
+        sellerEmail: "zipho@example.com",
+        location: "Walmer, Port Elizabeth",
+        lat: -33.9800,
         lng: 25.5800,
         status: "OPEN",
         timestamp: new Date(Date.now() - 3600000 * 3).toISOString()
@@ -33,34 +35,165 @@ const defaultItems = [
 ];
 
 // Application State
+let accounts = JSON.parse(localStorage.getItem('tradex_accounts')) || [
+    {
+        fullName: "Zipho Dastile",
+        email: "zipho@example.com",
+        phone: "+27 82 000 0000",
+        address: "2 Mingo Street, Port Elizabeth",
+        password: "123",
+        rating: 4.9,
+        tradesCompleted: 12
+    }
+];
+
+let currentUser = JSON.parse(localStorage.getItem('tradex_current_user')) || null;
 let items = JSON.parse(localStorage.getItem('tradex_items')) || defaultItems;
 let offers = JSON.parse(localStorage.getItem('tradex_offers')) || [];
-let profile = JSON.parse(localStorage.getItem('tradex_profile')) || {
-    fullName: "Zipho Dastile",
-    email: "zipho@example.com",
-    phone: "+27 82 000 0000",
-    address: "2 Mingo Street, Port Elizabeth, Eastern Cape",
-    rating: 4.9,
-    tradesCompleted: 12
-};
-let userLocation = null;
+let userLocation = null; // Store user GPS coordinates { lat, lng }
+let selectedPinCoords = { lat: -33.9608, lng: 25.6022 };
 
 function saveData() {
+    localStorage.setItem('tradex_accounts', JSON.stringify(accounts));
+    if (currentUser) {
+        localStorage.setItem('tradex_current_user', JSON.stringify(currentUser));
+    } else {
+        localStorage.removeItem('tradex_current_user');
+    }
     localStorage.setItem('tradex_items', JSON.stringify(items));
     localStorage.setItem('tradex_offers', JSON.stringify(offers));
-    localStorage.setItem('tradex_profile', JSON.stringify(profile));
     updateOfferCount();
 }
 
-// Toast Success / Error Notifications
+// Haversine formula to compute distance between two GPS coordinates in kilometers
+function calculateDistanceKm(lat1, lon1, lat2, lon2) {
+    const R = 6371; // Radius of the Earth in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = 
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+}
+
+// Location Request
+function requestUserLocation() {
+    if (!navigator.geolocation) {
+        return showErrorToast("Geolocation is not supported by your browser.");
+    }
+
+    const locStatus = document.getElementById('location-status');
+    locStatus.innerText = "Locating...";
+
+    navigator.geolocation.getCurrentPosition(
+        (position) => {
+            userLocation = {
+                lat: position.coords.latitude,
+                lng: position.coords.longitude
+            };
+            
+            document.getElementById('location-btn').classList.add('active');
+            locStatus.innerText = "GPS Active";
+            
+            // Enable Distance Sort Option
+            const distOpt = document.getElementById('distance-sort-option');
+            if (distOpt) distOpt.disabled = false;
+
+            showSuccessToast("Location updated! Showing distance to listings.");
+            applyFilters();
+        },
+        (error) => {
+            locStatus.innerText = "Enable GPS";
+            showErrorToast("Unable to retrieve location. Please check browser permissions.");
+        }
+    );
+}
+
+// Authentication Functions
+function switchAuthMode(mode) {
+    document.getElementById('login-form').style.display = (mode === 'login') ? 'block' : 'none';
+    document.getElementById('signup-form').style.display = (mode === 'signup') ? 'block' : 'none';
+    document.getElementById('tab-login-btn').classList.toggle('active', mode === 'login');
+    document.getElementById('tab-signup-btn').classList.toggle('active', mode === 'signup');
+}
+
+function handleLogin(e) {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value.trim().toLowerCase();
+    const password = document.getElementById('login-password').value;
+
+    const account = accounts.find(a => a.email.toLowerCase() === email && a.password === password);
+    if (!account) return showErrorToast("Invalid credentials!");
+
+    currentUser = account;
+    saveData();
+    document.getElementById('auth-modal').style.display = 'none';
+    showSuccessToast(`Welcome back, ${currentUser.fullName}!`);
+    initUserSession();
+}
+
+function handleSignUp(e) {
+    e.preventDefault();
+    const email = document.getElementById('signup-email').value.trim().toLowerCase();
+    if (accounts.some(a => a.email.toLowerCase() === email)) {
+        return showErrorToast("Account with this email already exists!");
+    }
+
+    const newAccount = {
+        fullName: document.getElementById('signup-name').value.trim(),
+        email: email,
+        phone: document.getElementById('signup-phone').value.trim(),
+        address: document.getElementById('signup-address').value.trim(),
+        password: document.getElementById('signup-password').value,
+        rating: 5.0,
+        tradesCompleted: 0
+    };
+
+    accounts.push(newAccount);
+    currentUser = newAccount;
+    saveData();
+    document.getElementById('auth-modal').style.display = 'none';
+    showSuccessToast("Account created successfully!");
+    initUserSession();
+}
+
+function logoutUser() {
+    currentUser = null;
+    localStorage.removeItem('tradex_current_user');
+    document.getElementById('auth-modal').style.display = 'flex';
+    document.getElementById('user-chip').style.display = 'none';
+    showSuccessToast("Logged out successfully.");
+}
+
+function checkAuthStatus() {
+    if (!currentUser) {
+        document.getElementById('auth-modal').style.display = 'flex';
+    } else {
+        document.getElementById('auth-modal').style.display = 'none';
+        initUserSession();
+    }
+}
+
+function initUserSession() {
+    if (!currentUser) return;
+    document.getElementById('user-chip').style.display = 'block';
+    document.getElementById('user-chip-name').innerText = currentUser.fullName.split(' ')[0];
+    document.getElementById('seller-name').value = currentUser.fullName;
+    document.getElementById('offered-by-name').value = currentUser.fullName;
+
+    loadProfileForm();
+    renderOffers();
+    applyFilters();
+}
+
+// Toasts
 function showSuccessToast(message) {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = 'toast toast-success';
-    toast.innerHTML = `
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
-        <span>${message}</span>
-    `;
+    toast.innerHTML = `<span>✅ ${message}</span>`;
     container.appendChild(toast);
     setTimeout(() => toast.remove(), 3500);
 }
@@ -69,171 +202,67 @@ function showErrorToast(message) {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
     toast.className = 'toast toast-error';
-    toast.innerHTML = `
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <span>${message}</span>
-    `;
+    toast.innerHTML = `<span>⚠️ ${message}</span>`;
     container.appendChild(toast);
     setTimeout(() => toast.remove(), 3500);
 }
 
-// Helper: Generate Secure 4-Digit Handover PIN
 function generateHandoverPin() {
     return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
-// Haversine distance calculation
-function calculateDistanceKm(lat1, lon1, lat2, lon2) {
-    const R = 6371;
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLon = (lon2 - lon1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-              Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return Math.round(R * c * 10) / 10;
-}
-
-// Reverse Geocoding
-async function reverseGeocodeAddress(lat, lng) {
-    try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
-        const data = await response.json();
-        if (data && data.display_name) {
-            return data.display_name.split(',').slice(0, 3).join(',');
-        }
-    } catch (e) {
-        console.warn("Reverse geocode fallback");
-    }
-    return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-}
-
-// Location Request
-function requestUserLocation() {
-    if ("geolocation" in navigator) {
-        document.getElementById('location-status').innerText = "Locating...";
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                userLocation = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-                const btn = document.getElementById('location-btn');
-                btn.classList.add('active');
-                document.getElementById('location-status').innerText = "GPS Location Active";
-                
-                const distanceOpt = document.getElementById('distance-sort-option');
-                distanceOpt.disabled = false;
-                distanceOpt.selected = true;
-
-                applyFilters();
-            },
-            () => {
-                document.getElementById('location-status').innerText = "Location Denied";
-            }
-        );
-    }
-}
-
-// Toggle Location Choice
-function toggleLocationInputChoice(value) {
-    const addressGroup = document.getElementById('manual-address-group');
-    const addressInput = document.getElementById('item-address');
-
-    if (value === 'GPS') {
-        addressGroup.style.display = 'none';
-        addressInput.required = false;
-        detectGPSAndFillAddress();
-    } else {
-        addressGroup.style.display = 'block';
-        addressInput.required = true;
-    }
-}
-
-async function detectGPSAndFillAddress() {
-    if ("geolocation" in navigator) {
-        navigator.geolocation.getCurrentPosition(async (position) => {
-            userLocation = {
-                lat: position.coords.latitude,
-                lng: position.coords.longitude
-            };
-            const address = await reverseGeocodeAddress(userLocation.lat, userLocation.lng);
-            document.getElementById('item-address').value = address;
-        });
-    }
-}
-
-function readFileAsBase64(fileInput) {
-    return new Promise((resolve) => {
-        const file = fileInput.files[0];
-        if (!file) return resolve(null);
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.readAsDataURL(file);
-    });
-}
-
-// Tab Navigation
+// Tab Switching
 function switchTab(tabId, btnElement) {
+    if (!currentUser) return checkAuthStatus();
+
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.remove('active'));
     document.querySelectorAll('.bottom-nav-btn').forEach(btn => btn.classList.remove('active'));
     
     document.getElementById(tabId).classList.add('active');
-    
-    if (btnElement) {
-        btnElement.classList.add('active');
-    }
+    if (btnElement) btnElement.classList.add('active');
 
     if (tabId === 'explore-tab') renderItems();
     if (tabId === 'offers-tab') renderOffers();
     if (tabId === 'profile-tab') loadProfileForm();
 }
 
-// Filtering & Sorting
+// Filtering & Radius Calculation
 function applyFilters() {
     const searchVal = document.getElementById('search-input').value.toLowerCase();
-    const statusVal = document.getElementById('filter-status').value;
     const categoryVal = document.getElementById('filter-category').value;
-    const dateVal = document.getElementById('filter-date').value;
+    const statusVal = document.getElementById('filter-status').value;
+    const radiusVal = document.getElementById('filter-radius').value;
     const sortVal = document.getElementById('sort-price').value;
 
-    const now = new Date();
-
-    let filtered = items.map(item => {
-        let dist = null;
-        if (userLocation && item.lat && item.lng) {
-            dist = calculateDistanceKm(userLocation.lat, userLocation.lng, item.lat, item.lng);
-        }
-        return { ...item, distanceKm: dist };
-    }).filter(item => {
-        const matchesSearch = item.title.toLowerCase().includes(searchVal) ||
-                              item.description.toLowerCase().includes(searchVal) ||
+    let filtered = items.filter(item => {
+        const matchesSearch = item.title.toLowerCase().includes(searchVal) || 
                               item.sellerName.toLowerCase().includes(searchVal) ||
-                              (item.address && item.address.toLowerCase().includes(searchVal));
-
-        const matchesStatus = statusVal === 'ALL' || item.status === statusVal;
+                              (item.location && item.location.toLowerCase().includes(searchVal));
         const matchesCategory = categoryVal === 'ALL' || item.category === categoryVal;
+        const matchesStatus = statusVal === 'ALL' || item.status === statusVal;
 
-        const itemDate = new Date(item.timestamp);
-        let matchesDate = true;
-        if (dateVal === 'TODAY') {
-            matchesDate = itemDate.toDateString() === now.toDateString();
-        } else if (dateVal === 'WEEK') {
-            matchesDate = itemDate >= new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-        } else if (dateVal === 'MONTH') {
-            matchesDate = itemDate >= new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+        // Proximity Filtering
+        let matchesRadius = true;
+        if (radiusVal !== 'ALL' && userLocation && item.lat && item.lng) {
+            const dist = calculateDistanceKm(userLocation.lat, userLocation.lng, item.lat, item.lng);
+            matchesRadius = dist <= parseFloat(radiusVal);
         }
 
-        return matchesSearch && matchesStatus && matchesCategory && matchesDate;
+        return matchesSearch && matchesCategory && matchesStatus && matchesRadius;
     });
 
+    // Sorting logic
     if (sortVal === 'DISTANCE' && userLocation) {
-        filtered.sort((a, b) => (a.distanceKm ?? 9999) - (b.distanceKm ?? 9999));
+        filtered.sort((a, b) => {
+            const distA = (a.lat && a.lng) ? calculateDistanceKm(userLocation.lat, userLocation.lng, a.lat, a.lng) : Infinity;
+            const distB = (b.lat && b.lng) ? calculateDistanceKm(userLocation.lat, userLocation.lng, b.lat, b.lng) : Infinity;
+            return distA - distB;
+        });
     } else if (sortVal === 'LOW_HIGH') {
         filtered.sort((a, b) => a.price - b.price);
     } else if (sortVal === 'HIGH_LOW') {
         filtered.sort((a, b) => b.price - a.price);
-    } else {
+    } else if (sortVal === 'NEWEST') {
         filtered.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
     }
 
@@ -246,52 +275,38 @@ function renderItems(itemsToRender = items) {
     grid.innerHTML = '';
 
     if (itemsToRender.length === 0) {
-        grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; padding: 2rem; color:#64748b;">No active trade listings found.</p>';
+        grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; padding: 2rem; color:#64748b;">No listings found matching your criteria.</p>';
         return;
     }
 
     itemsToRender.forEach(item => {
         const card = document.createElement('div');
         card.className = 'card';
+        const isMyItem = currentUser && item.sellerEmail === currentUser.email;
 
-        const distanceBadgeHtml = item.distanceKm !== null && item.distanceKm !== undefined
-            ? `<span class="distance-badge"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>${item.distanceKm} km away</span>`
-            : '';
-
-        const statusBadgeHtml = item.status === 'CLOSED'
-            ? `<span class="status-closed">TRADE COMPLETED</span>`
-            : `<span class="badge" style="background:#dcfce7; color:#15803d;">OPEN</span>`;
-
-        const actionButtons = item.status === 'CLOSED'
-            ? `<button class="secondary-btn" onclick="openDetailModal('${item.id}')" style="width:100%;">View Details</button>`
-            : `<button class="secondary-btn" onclick="openDetailModal('${item.id}')">Details</button>
-               <button class="primary-btn" onclick="openTradeModal('${item.id}', event)">Offer Trade</button>`;
+        // Calculate distance if GPS is available
+        let distanceText = '';
+        if (userLocation && item.lat && item.lng) {
+            const km = calculateDistanceKm(userLocation.lat, userLocation.lng, item.lat, item.lng);
+            distanceText = ` (${km < 1 ? '<1' : km.toFixed(1)} km away)`;
+        }
 
         card.innerHTML = `
-            <img src="${item.image}" alt="${item.title}" onclick="openDetailModal('${item.id}')" onerror="this.src='https://via.placeholder.com/300x180?text=No+Image'">
+            <img src="${item.image}" alt="${item.title}" onclick="openDetailModal('${item.id}')">
             <div class="card-body">
-                <div class="card-header-info">
-                    <span class="badge">${item.category}</span>
-                    ${statusBadgeHtml}
-                    ${distanceBadgeHtml}
-                </div>
+                <span class="badge">${item.category}</span>
                 <div class="price-tag">Est. Value: R${item.price}</div>
-                <h3 class="card-title" onclick="openDetailModal('${item.id}')">${item.title}</h3>
+                <h3 class="card-title">${item.title}</h3>
                 
-                <div class="seller-info">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                    Seller: <strong>${item.sellerName}</strong>
-                </div>
-                <div class="address-info">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/></svg>
-                    ${item.address || 'GPS Coordinates Active'}
+                <!-- Automatic Location Badge -->
+                <div class="location-tag">
+                    📍 ${item.location || 'Port Elizabeth'}${distanceText}
                 </div>
 
-                <p class="card-desc">${item.description}</p>
-                <div class="trade-for"><strong>Wants:</strong> ${item.wanted}</div>
-
+                <p style="font-size:0.8rem; color:#64748b;">Seller: ${item.sellerName}</p>
                 <div class="card-actions">
-                    ${actionButtons}
+                    <button class="secondary-btn" onclick="openDetailModal('${item.id}')">Details</button>
+                    ${!isMyItem && item.status === 'OPEN' ? `<button class="primary-btn" onclick="openTradeModal('${item.id}')">Offer Trade</button>` : ''}
                 </div>
             </div>
         `;
@@ -303,16 +318,21 @@ function openDetailModal(itemId) {
     const item = items.find(i => i.id === itemId);
     if (!item) return;
 
-    const modalBody = document.getElementById('detail-modal-body');
-    modalBody.innerHTML = `
+    let distanceText = '';
+    if (userLocation && item.lat && item.lng) {
+        const km = calculateDistanceKm(userLocation.lat, userLocation.lng, item.lat, item.lng);
+        distanceText = `<p><strong>Distance:</strong> ${km.toFixed(2)} km away</p>`;
+    }
+
+    document.getElementById('detail-modal-body').innerHTML = `
         <h2>${item.title}</h2>
-        <img src="${item.image}" alt="${item.title}" style="width:100%; max-height:280px; object-fit:cover; border-radius:8px; margin:1rem 0;">
+        <img src="${item.image}" style="width:100%; height:200px; object-fit:cover; border-radius:8px; margin:1rem 0;">
         <p><strong>Category:</strong> ${item.category}</p>
-        <p><strong>Estimated Value:</strong> R${item.price}</p>
-        <p><strong>Location:</strong> ${item.address || 'GPS Coordinates Active'}</p>
+        <p><strong>Value:</strong> R${item.price}</p>
+        <p><strong>Location:</strong> 📍 ${item.location || 'Not Specified'}</p>
+        ${distanceText}
         <p><strong>Seller:</strong> ${item.sellerName}</p>
-        <h3 style="margin-top:1rem;">Description</h3>
-        <p style="margin-top:0.4rem; color:#475569;">${item.description}</p>
+        <p style="margin-top:0.5rem; color:#475569;">${item.description}</p>
     `;
     document.getElementById('detail-modal').style.display = 'flex';
 }
@@ -321,30 +341,26 @@ function closeDetailModal() {
     document.getElementById('detail-modal').style.display = 'none';
 }
 
-// Publish Item Form Submission
-document.getElementById('post-item-form').addEventListener('submit', async function(e) {
+// Create Listing
+document.getElementById('post-item-form').addEventListener('submit', function(e) {
     e.preventDefault();
+    if (!currentUser) return checkAuthStatus();
 
-    const fileInput = document.getElementById('item-image');
-    const imageBase64 = await readFileAsBase64(fileInput);
-
-    if (!imageBase64) return showErrorToast("Please upload an image!");
-
-    const locationChoice = document.querySelector('input[name="location-choice"]:checked').value;
-    const addressInput = document.getElementById('item-address').value;
+    const locationVal = document.getElementById('item-location').value.trim();
 
     const newItem = {
         id: Date.now().toString(),
-        sellerName: document.getElementById('seller-name').value,
+        sellerName: currentUser.fullName,
+        sellerEmail: currentUser.email,
         title: document.getElementById('item-title').value,
         category: document.getElementById('item-category').value,
         price: parseFloat(document.getElementById('item-price').value),
-        address: (locationChoice === 'GPS') ? (addressInput || "GPS Location Active") : addressInput,
-        image: imageBase64,
+        location: locationVal,
+        lat: userLocation ? userLocation.lat : -33.9608,
+        lng: userLocation ? userLocation.lng : 25.6022,
+        image: "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500",
         description: document.getElementById('item-desc').value,
         wanted: document.getElementById('item-wanted').value,
-        lat: userLocation ? userLocation.lat : -33.9180,
-        lng: userLocation ? userLocation.lng : 25.5800,
         status: "OPEN",
         timestamp: new Date().toISOString()
     };
@@ -352,17 +368,13 @@ document.getElementById('post-item-form').addEventListener('submit', async funct
     items.unshift(newItem);
     saveData();
     this.reset();
-    
-    toggleLocationInputChoice('GPS');
-    showSuccessToast("Trade listing posted successfully!");
-    
-    const exploreBtn = document.querySelectorAll('.bottom-nav-btn')[0];
-    switchTab('explore-tab', exploreBtn);
+    showSuccessToast("Listing published!");
+    switchTab('explore-tab', document.querySelectorAll('.bottom-nav-btn')[0]);
 });
 
-// Trade Proposal Modal
-function openTradeModal(itemId, event) {
-    if (event) event.stopPropagation();
+// Proposal Modal
+function openTradeModal(itemId) {
+    if (!currentUser) return checkAuthStatus();
     const targetItem = items.find(i => i.id === itemId);
     document.getElementById('target-item-id').value = itemId;
     document.getElementById('modal-item-title').innerText = `Offer Trade for: ${targetItem.title}`;
@@ -374,16 +386,10 @@ function closeTradeModal() {
     document.getElementById('trade-offer-form').reset();
 }
 
-// Handle Trade Proposal Submission
-document.getElementById('trade-offer-form').addEventListener('submit', async function(e) {
+document.getElementById('trade-offer-form').addEventListener('submit', function(e) {
     e.preventDefault();
-
     const targetId = document.getElementById('target-item-id').value;
     const targetItem = items.find(i => i.id === targetId);
-    const offerFileInput = document.getElementById('offered-image');
-    const offerImageBase64 = await readFileAsBase64(offerFileInput);
-
-    const cashVal = parseFloat(document.getElementById('offered-cash').value) || 0;
 
     const newOffer = {
         id: Date.now().toString(),
@@ -392,189 +398,302 @@ document.getElementById('trade-offer-form').addEventListener('submit', async fun
         targetPrice: targetItem.price,
         targetImage: targetItem.image,
         sellerName: targetItem.sellerName,
-        offeredByName: document.getElementById('offered-by-name').value,
+        sellerEmail: targetItem.sellerEmail,
+        offeredByName: currentUser.fullName,
+        offeredByEmail: currentUser.email,
         offeredItem: document.getElementById('offered-item').value,
         offeredPrice: parseFloat(document.getElementById('offered-price').value),
-        offeredImage: offerImageBase64 || "https://via.placeholder.com/300x180?text=No+Photo",
+        offeredImage: "https://images.unsplash.com/photo-1544816155-12df9643f363?w=500",
         offeredDesc: document.getElementById('offer-desc').value,
-        cashTopUp: cashVal,
-        escrowStatus: cashVal > 0 ? "PENDING_DEPOSIT" : "NOT_REQUIRED",
+        cashTopUp: parseFloat(document.getElementById('offered-cash').value) || 0,
+        
+        meetingLocation: "",
+        meetingDate: "",
+        meetingTime: "",
+        additionalInstructions: "",
+        meetingCoordinates: null,
+        
+        meetingConfirmedBySeller: false,
+        meetingConfirmedByBuyer: false,
         sellerPin: generateHandoverPin(),
         buyerPin: generateHandoverPin(),
-        sellerPinVerified: false,
-        buyerPinVerified: false,
-        note: document.getElementById('offer-note').value,
-        status: "PENDING",
-        date: new Date().toLocaleDateString(),
-        hasUnreadNegotiation: false,
-        negotiations: []
+        status: "Pending",
+        date: new Date().toLocaleDateString()
     };
 
     offers.unshift(newOffer);
     saveData();
-
     closeTradeModal();
-    showSuccessToast("Trade proposal sent!");
+    showSuccessToast("Trade proposal submitted!");
+    renderOffers();
 });
 
-// Render Offers Screen
+// Render Offers List
 function renderOffers() {
     const list = document.getElementById('offers-list');
+    if (!list) return;
     list.innerHTML = '';
 
-    if (offers.length === 0) {
-        list.innerHTML = '<p style="text-align:center; padding:2rem; color:#64748b;">No active trade proposals found.</p>';
+    if (!currentUser) {
+        list.innerHTML = '<p style="text-align:center; padding:2rem; color:#64748b;">Please log in to view trades.</p>';
         return;
     }
 
-    offers.forEach(offer => {
+    const myOffers = offers.filter(o => o.offeredByEmail === currentUser.email || o.sellerEmail === currentUser.email);
+
+    if (myOffers.length === 0) {
+        list.innerHTML = '<p style="text-align:center; padding:2rem; color:#64748b;">No active trade proposals.</p>';
+        return;
+    }
+
+    myOffers.forEach(offer => {
         const card = document.createElement('div');
         card.className = 'offer-card';
-        card.onclick = (e) => openOfferDetailModal(offer.id, e);
 
-        const unreadNegotiationBanner = offer.hasUnreadNegotiation ? `
-            <div class="negotiation-alert-banner">
-                <span class="negotiation-badge-new">NEW</span>
-                <span>New negotiation message received!</span>
-            </div>
-        ` : '';
+        const isReceivingParty = offer.sellerEmail === currentUser.email;
+        const isAccepted = offer.status === 'Accepted';
+        const isCompleted = offer.status === 'Completed' || offer.status === 'Cancelled';
 
-        let escrowBadgeHtml = '';
-        if (offer.cashTopUp > 0) {
-            if (offer.escrowStatus === "HELD_IN_ESCROW") {
-                escrowBadgeHtml = `<span class="status-escrow">R${offer.cashTopUp} HELD IN ESCROW VAULT</span>`;
-            } else if (offer.escrowStatus === "RELEASED") {
-                escrowBadgeHtml = `<span class="status-accepted">ESCROW RELEASED</span>`;
-            } else {
-                escrowBadgeHtml = `<span class="status-pending">ESCROW DEPOSIT REQUIRED (R${offer.cashTopUp})</span>`;
-            }
+        let meetingCardContent = '';
+
+        if (!isAccepted && !isCompleted) {
+            meetingCardContent = `
+                <div class="pre-acceptance-locked-box">
+                    <span>🔒</span>
+                    <div>
+                        <strong>Meeting Details Read-Only Prior to Acceptance</strong>
+                        <div>Parameters will be specified during acceptance.</div>
+                    </div>
+                </div>
+            `;
+        } else {
+            const isConfirmed = offer.meetingConfirmedBySeller && offer.meetingConfirmedByBuyer;
+            const statusBadge = isConfirmed 
+                ? `<span class="status-badge-confirmed">Confirmed</span>` 
+                : `<span class="status-badge-pending-confirm">Pending Confirmation</span>`;
+
+            meetingCardContent = `
+                <div class="meeting-details-card">
+                    <div class="meeting-card-header">
+                        <strong style="font-size:0.88rem; color:#0f172a;">📍 Meeting Details Card</strong>
+                        ${statusBadge}
+                    </div>
+                    
+                    <div class="meeting-info-row">
+                        <strong>Location:</strong> ${offer.meetingLocation}
+                    </div>
+                    <div class="meeting-info-row">
+                        <strong>Date & Time:</strong> ${offer.meetingDate} at ${offer.meetingTime}
+                    </div>
+                    ${offer.additionalInstructions ? `<div class="meeting-info-row"><strong>Instructions:</strong> ${offer.additionalInstructions}</div>` : ''}
+
+                    <div class="map-container" style="height:100px; margin-top:0.5rem; cursor:default;">
+                        <div class="map-grid-overlay"></div>
+                        <div class="map-pin" style="top: 45%; left: 50%;">📍</div>
+                        <div class="map-coordinates-bar">Confirmed Swap Coordinates</div>
+                    </div>
+
+                    <div style="display:flex; gap:0.5rem; margin-top:0.6rem;">
+                        <button class="secondary-btn" style="font-size:0.75rem;" onclick="openDirections('${offer.meetingLocation}')">🗺️ Directions</button>
+                        ${!isCompleted ? `<button class="secondary-btn" style="font-size:0.75rem;" onclick="openProposeLocationModal('${offer.id}')">Propose New Location</button>` : ''}
+                    </div>
+                </div>
+            `;
         }
 
-        // Action Buttons Setup based on Escrow & Handover PIN State
         let actionButtonsHtml = '';
-        if (offer.status === 'PENDING') {
+        if (offer.status === 'Pending') {
+            if (isReceivingParty) {
+                actionButtonsHtml = `
+                    <button class="accept-btn" style="width:100%;" onclick="openAcceptanceModal('${offer.id}')">Accept Trade</button>
+                `;
+            } else {
+                actionButtonsHtml = `<div style="font-size:0.8rem; color:#b45309;">Awaiting receiving party response...</div>`;
+            }
+        } else if (offer.status === 'Accepted') {
             actionButtonsHtml = `
-                <button class="secondary-btn" onclick="openOfferDetailModal('${offer.id}', event)">View Details</button>
-                <button class="secondary-btn" onclick="openCounterModal('${offer.id}')">Negotiate</button>
-                <button class="accept-btn" onclick="acceptTradeOffer('${offer.id}')">Accept Offer</button>
-            `;
-        } else if (offer.status === 'ACCEPTED / ESCROW REQUIRED') {
-            actionButtonsHtml = `
-                <button class="secondary-btn" onclick="openOfferDetailModal('${offer.id}', event)">View Details</button>
-                <button class="escrow-btn" onclick="openEscrowModal('${offer.id}')">Deposit R${offer.cashTopUp} in Escrow</button>
-            `;
-        } else if (offer.status === 'READY FOR HANDOVER') {
-            actionButtonsHtml = `
-                <button class="primary-btn" style="background:#16a34a; width:100%;" onclick="openOtpModal('${offer.id}')">Execute In-Person Handover PINs</button>
+                <button class="primary-btn" style="background:#16a34a;" onclick="openOtpModal('${offer.id}')">Execute Handover PIN Verification</button>
             `;
         } else {
             actionButtonsHtml = `
-                <button class="secondary-btn" style="width:100%;" onclick="openOfferDetailModal('${offer.id}', event)">View Completed Trade Receipt</button>
+                <div style="font-size:0.8rem; color:#64748b; font-weight:600;">Trade ${offer.status} (Parameters Read-Only)</div>
             `;
         }
 
         card.innerHTML = `
-            ${unreadNegotiationBanner}
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; flex-wrap:wrap; gap:0.4rem;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
                 <h3>Trade: ${offer.sellerName} & ${offer.offeredByName}</h3>
-                <div style="display:flex; gap:0.3rem; align-items:center;">
-                    ${escrowBadgeHtml}
-                    <span class="${offer.status.includes('ACCEPTED') || offer.status.includes('READY') || offer.status.includes('COMPLETED') ? 'status-accepted' : 'status-pending'}">${offer.status}</span>
-                </div>
+                <span class="badge">${offer.status}</span>
             </div>
 
             <div class="offer-grid-preview">
                 <div class="offer-preview-box">
-                    <span class="badge">Requested Item</span>
-                    <img src="${offer.targetImage}" alt="${offer.targetTitle}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'">
                     <strong>${offer.targetTitle}</strong>
-                    <span style="font-size:0.82rem; color:#16a34a; font-weight:700;">Value: R${offer.targetPrice}</span>
+                    <img src="${offer.targetImage}">
+                    <span>Value: R${offer.targetPrice}</span>
                 </div>
-
                 <div class="offer-preview-box">
-                    <span class="badge" style="background:#dbeafe; color:#1e40af;">Offered Item</span>
-                    <img src="${offer.offeredImage}" alt="${offer.offeredItem}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'">
                     <strong>${offer.offeredItem}</strong>
-                    <span style="font-size:0.82rem; color:#16a34a; font-weight:700;">Value: R${offer.offeredPrice}</span>
+                    <img src="${offer.offeredImage}">
+                    <span>Value: R${offer.offeredPrice}</span>
                 </div>
             </div>
 
-            <div style="display:flex; gap:0.5rem; margin-top:0.75rem;" onclick="event.stopPropagation()">
+            ${meetingCardContent}
+
+            <div style="margin-top:0.75rem;">
                 ${actionButtonsHtml}
             </div>
         `;
+
         list.appendChild(card);
     });
 }
 
-// Accept Trade Offer
-function acceptTradeOffer(offerId) {
+// Acceptance Modal Handling
+function openAcceptanceModal(offerId) {
+    document.getElementById('accepting-offer-id').value = offerId;
+    document.getElementById('acceptance-form').reset();
+    document.getElementById('confirm-accept-btn').disabled = true;
+    
+    selectedPinCoords = { lat: -33.9608, lng: 25.6022 };
+    updateMapPinUI();
+
+    document.getElementById('acceptance-modal').style.display = 'flex';
+}
+
+function closeAcceptanceModal() {
+    document.getElementById('acceptance-modal').style.display = 'none';
+}
+
+function handleMapPinDrop(e) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    const xPct = (x / rect.width) * 100;
+    const yPct = (y / rect.height) * 100;
+
+    const pin = document.getElementById('map-pin');
+    pin.style.left = `${xPct}%`;
+    pin.style.top = `${yPct}%`;
+
+    selectedPinCoords = {
+        lat: -33.9000 - (yPct / 1000),
+        lng: 25.5000 + (xPct / 1000)
+    };
+
+    document.getElementById('map-coords-text').innerText = `Lat: ${selectedPinCoords.lat.toFixed(4)}, Lng: ${selectedPinCoords.lng.toFixed(4)} (Pin Selected)`;
+    
+    if (!document.getElementById('accept-location-input').value) {
+        document.getElementById('accept-location-input').value = `Pinned Spot (${selectedPinCoords.lat.toFixed(3)}, ${selectedPinCoords.lng.toFixed(3)})`;
+    }
+    validateAcceptanceForm();
+}
+
+function updateMapPinUI() {
+    document.getElementById('map-coords-text').innerText = `Lat: ${selectedPinCoords.lat.toFixed(4)}, Lng: ${selectedPinCoords.lng.toFixed(4)} (Click map to adjust pin)`;
+}
+
+function usePresetSafeZone() {
+    document.getElementById('accept-location-input').value = "Walmer Park Shopping Centre Safe Zone";
+    validateAcceptanceForm();
+}
+
+function validateAcceptanceForm() {
+    const loc = document.getElementById('accept-location-input').value.trim();
+    const date = document.getElementById('accept-date').value;
+    const time = document.getElementById('accept-time').value;
+
+    const isValid = loc !== "" && date !== "" && time !== "" && selectedPinCoords !== null;
+    document.getElementById('confirm-accept-btn').disabled = !isValid;
+    return isValid;
+}
+
+function submitAcceptanceWithMeeting(e) {
+    e.preventDefault();
+
+    const offerId = document.getElementById('accepting-offer-id').value;
     const offer = offers.find(o => o.id === offerId);
     if (!offer) return;
 
-    if (offer.cashTopUp > 0 && offer.escrowStatus === "PENDING_DEPOSIT") {
-        offer.status = "ACCEPTED / ESCROW REQUIRED";
-        showSuccessToast("Offer accepted! Cash top-up must now be deposited in escrow.");
-    } else {
-        offer.status = "READY FOR HANDOVER";
-        showSuccessToast("Trade offer accepted! Ready for in-person OTP exchange.");
+    const loc = document.getElementById('accept-location-input').value.trim();
+    const date = document.getElementById('accept-date').value;
+    const time = document.getElementById('accept-time').value;
+
+    if (!loc || !date || !time || !selectedPinCoords) {
+        return showErrorToast("Data Validation Error: Location, date, and time coordinates cannot be empty!");
     }
 
-    offer.hasUnreadNegotiation = false;
+    offer.status = "Accepted";
+    offer.meetingLocation = loc;
+    offer.meetingDate = date;
+    offer.meetingTime = time;
+    offer.additionalInstructions = document.getElementById('accept-instructions').value.trim();
+    offer.meetingCoordinates = selectedPinCoords;
+    
+    offer.meetingConfirmedBySeller = true; 
+    offer.meetingConfirmedByBuyer = false; 
+
     saveData();
+    closeAcceptanceModal();
+    showSuccessToast("Trade Accepted & Meeting Parameters Linked!");
     renderOffers();
-    applyFilters();
 }
 
-// Escrow Deposit Logic
-function openEscrowModal(offerId) {
+function openProposeLocationModal(offerId) {
+    document.getElementById('adjust-offer-id').value = offerId;
     const offer = offers.find(o => o.id === offerId);
-    if (!offer) return;
-
-    document.getElementById('escrow-offer-id').value = offerId;
-    document.getElementById('escrow-amount-display').innerText = `R${offer.cashTopUp.toFixed(2)}`;
-    document.getElementById('escrow-total-display').innerText = `R${offer.cashTopUp.toFixed(2)}`;
-    document.getElementById('escrow-modal').style.display = 'flex';
+    if (offer) {
+        document.getElementById('adjust-location').value = offer.meetingLocation || '';
+        document.getElementById('adjust-date').value = offer.meetingDate || '';
+        document.getElementById('adjust-time').value = offer.meetingTime || '';
+    }
+    document.getElementById('propose-location-modal').style.display = 'flex';
 }
 
-function closeEscrowModal() {
-    document.getElementById('escrow-modal').style.display = 'none';
+function closeProposeLocationModal() {
+    document.getElementById('propose-location-modal').style.display = 'none';
 }
 
-function executeEscrowDeposit(e) {
+function submitLocationAdjustment(e) {
     e.preventDefault();
-    const offerId = document.getElementById('escrow-offer-id').value;
+    const offerId = document.getElementById('adjust-offer-id').value;
     const offer = offers.find(o => o.id === offerId);
 
-    if (!offer) return;
+    if (offer) {
+        offer.meetingLocation = document.getElementById('adjust-location').value.trim();
+        offer.meetingDate = document.getElementById('adjust-date').value;
+        offer.meetingTime = document.getElementById('adjust-time').value;
+        offer.additionalInstructions = document.getElementById('adjust-notes').value.trim();
 
-    offer.escrowStatus = "HELD_IN_ESCROW";
-    offer.status = "READY FOR HANDOVER";
-    saveData();
+        offer.meetingConfirmedByBuyer = true;
+        offer.meetingConfirmedBySeller = false;
 
-    closeEscrowModal();
-    showSuccessToast(`R${offer.cashTopUp} successfully deposited into Escrow Vault!`);
-    renderOffers();
+        saveData();
+        closeProposeLocationModal();
+        showSuccessToast("Proposed new location updated!");
+        renderOffers();
+    }
 }
 
-// Handover OTP Verification Logic
+function openDirections(locationStr) {
+    const query = encodeURIComponent(locationStr);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}`, '_blank');
+}
+
 function openOtpModal(offerId) {
     const offer = offers.find(o => o.id === offerId);
-    if (!offer) return;
+    if (!offer || !currentUser) return;
 
     document.getElementById('otp-offer-id').value = offerId;
-
-    // Distinguish PIN display between Buyer and Seller display mode
-    const isSeller = profile.fullName.toLowerCase().includes(offer.sellerName.toLowerCase());
-    const myPin = isSeller ? offer.sellerPin : offer.buyerPin;
-
-    document.getElementById('my-otp-display').innerText = myPin;
+    const isSeller = currentUser.email === offer.sellerEmail;
+    document.getElementById('my-otp-display').innerText = isSeller ? offer.sellerPin : offer.buyerPin;
     document.getElementById('otp-modal').style.display = 'flex';
 }
 
 function closeOtpModal() {
     document.getElementById('otp-modal').style.display = 'none';
-    document.getElementById('otp-verification-form').reset();
 }
 
 function submitHandoverPin(e) {
@@ -583,192 +702,36 @@ function submitHandoverPin(e) {
     const offer = offers.find(o => o.id === offerId);
     const enteredPin = document.getElementById('received-pin-input').value.trim();
 
-    if (!offer) return;
+    const isSeller = currentUser.email === offer.sellerEmail;
+    const expectedPin = isSeller ? offer.buyerPin : offer.sellerPin;
 
-    const isSeller = profile.fullName.toLowerCase().includes(offer.sellerName.toLowerCase());
-    const expectedOtherPin = isSeller ? offer.buyerPin : offer.sellerPin;
-
-    if (enteredPin !== expectedOtherPin) {
-        showErrorToast("Invalid Handover PIN entered! Please re-check with trader.");
-        return;
+    if (enteredPin !== expectedPin) {
+        return showErrorToast("Invalid PIN entered!");
     }
 
-    if (isSeller) {
-        offer.buyerPinVerified = true;
-    } else {
-        offer.sellerPinVerified = true;
-    }
-
-    // Fully complete trade when PIN is validated
-    offer.status = "TRADE COMPLETED";
-    if (offer.cashTopUp > 0) offer.escrowStatus = "RELEASED";
-
-    const targetItem = items.find(i => i.id === offer.targetItemId);
-    if (targetItem) targetItem.status = "CLOSED";
-
-    profile.tradesCompleted = (profile.tradesCompleted || 0) + 1;
+    offer.status = "Completed";
+    
+    const item = items.find(i => i.id === offer.targetItemId);
+    if (item) item.status = "CLOSED";
 
     saveData();
     closeOtpModal();
-    showSuccessToast("PIN Verified! Trade successfully completed and funds released.");
+    showSuccessToast("Handover Verified! Trade is Completed.");
     renderOffers();
     applyFilters();
 }
 
-// Open Full Offer Preview Modal
-function openOfferDetailModal(offerId, event) {
-    if (event) event.stopPropagation();
-    const offer = offers.find(o => o.id === offerId);
-    if (!offer) return;
-
-    if (offer.hasUnreadNegotiation) {
-        offer.hasUnreadNegotiation = false;
-        saveData();
-    }
-
-    const modalBody = document.getElementById('offer-detail-modal-body');
-
-    modalBody.innerHTML = `
-        <h2>Trade Proposal Details</h2>
-        <p style="color:#64748b; font-size:0.88rem; margin-bottom:1rem;">Proposed on ${offer.date}</p>
-        
-        <div class="offer-grid-preview">
-            <div class="offer-preview-box">
-                <span class="badge">Target Item</span>
-                <img src="${offer.targetImage}" alt="${offer.targetTitle}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'">
-                <strong>${offer.targetTitle}</strong>
-                <span style="font-size:0.85rem; color:#16a34a; font-weight:700;">R${offer.targetPrice}</span>
-            </div>
-
-            <div class="offer-preview-box">
-                <span class="badge" style="background:#dbeafe; color:#1e40af;">Offered Item</span>
-                <img src="${offer.offeredImage}" alt="${offer.offeredItem}" onerror="this.src='https://via.placeholder.com/150?text=No+Image'">
-                <strong>${offer.offeredItem}</strong>
-                <span style="font-size:0.85rem; color:#16a34a; font-weight:700;">R${offer.offeredPrice}</span>
-            </div>
-        </div>
-
-        ${offer.cashTopUp > 0 ? `<div style="background:#dcfce7; padding:0.6rem; border-radius:6px; font-weight:700; color:#15803d; margin-bottom:1rem;">Cash Top-Up: R${offer.cashTopUp} (${offer.escrowStatus})</div>` : ''}
-
-        <h4>Handover Verification Status</h4>
-        <p style="font-size:0.85rem; color:#475569; margin:0.3rem 0 1rem 0;">Status: <strong>${offer.status}</strong></p>
-
-        <h4>Offered Item Description</h4>
-        <p style="font-size:0.9rem; color:#334155; margin:0.4rem 0 1rem 0;">${offer.offeredDesc}</p>
-    `;
-
-    document.getElementById('offer-detail-modal').style.display = 'flex';
-}
-
-function closeOfferDetailModal() {
-    document.getElementById('offer-detail-modal').style.display = 'none';
-    renderOffers();
-}
-
-// Counter-Offer / Negotiation
-function openCounterModal(offerId) {
-    const offer = offers.find(o => o.id === offerId);
-    if (!offer) return;
-
-    document.getElementById('counter-offer-id').value = offerId;
-    let lastSender = offer.offeredByName;
-    if (offer.negotiations && offer.negotiations.length > 0) {
-        lastSender = offer.negotiations[offer.negotiations.length - 1].sender;
-    }
-    const autoSender = (lastSender === offer.offeredByName) ? offer.sellerName : offer.offeredByName;
-
-    document.getElementById('auto-trader-badge').innerText = autoSender;
-    document.getElementById('counter-modal').style.display = 'flex';
-}
-
-function closeCounterModal() {
-    document.getElementById('counter-modal').style.display = 'none';
-    document.getElementById('counter-offer-form').reset();
-}
-
-document.getElementById('counter-offer-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-
-    const offerId = document.getElementById('counter-offer-id').value;
-    const offer = offers.find(o => o.id === offerId);
-
-    let lastSender = offer.offeredByName;
-    if (offer.negotiations && offer.negotiations.length > 0) {
-        lastSender = offer.negotiations[offer.negotiations.length - 1].sender;
-    }
-    const autoSender = (lastSender === offer.offeredByName) ? offer.sellerName : offer.offeredByName;
-
-    if (!offer.negotiations) offer.negotiations = [];
-
-    const cashAdj = parseFloat(document.getElementById('counter-cash').value);
-    if (!isNaN(cashAdj)) {
-        offer.cashTopUp = cashAdj;
-    }
-
-    offer.negotiations.push({
-        sender: autoSender,
-        message: document.getElementById('counter-message').value,
-        cashProposed: cashAdj || offer.cashTopUp,
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    });
-
-    offer.hasUnreadNegotiation = true;
-
-    saveData();
-    closeCounterModal();
-    showSuccessToast("Negotiation response sent!");
-    renderOffers();
-});
-
-// Profile Management
 function loadProfileForm() {
-    document.getElementById('profile-full-name').value = profile.fullName || '';
-    document.getElementById('profile-email').value = profile.email || '';
-    document.getElementById('profile-phone').value = profile.phone || '';
-    document.getElementById('profile-default-address').value = profile.address || '';
-    document.getElementById('seller-name').value = profile.fullName || '';
-    
-    document.getElementById('trust-rating-val').innerText = `${profile.rating || 4.9} / 5.0 Trust Score`;
-    document.getElementById('trust-details-val').innerText = `Verified Phone & ID • ${profile.tradesCompleted || 0} Successful Swaps`;
-}
-
-document.getElementById('profile-form').addEventListener('submit', function(e) {
-    e.preventDefault();
-    profile.fullName = document.getElementById('profile-full-name').value;
-    profile.email = document.getElementById('profile-email').value;
-    profile.phone = document.getElementById('profile-phone').value;
-    profile.address = document.getElementById('profile-default-address').value;
-
-    saveData();
-    showSuccessToast("Profile settings saved!");
-});
-
-function resetLocalAccountData() {
-    if (confirm("Clear local storage items and trade offers?")) {
-        localStorage.clear();
-        items = defaultItems;
-        offers = [];
-        saveData();
-        showSuccessToast("Local trade cache cleared!");
-        location.reload();
-    }
+    if (!currentUser) return;
+    document.getElementById('profile-full-name').value = currentUser.fullName || '';
+    document.getElementById('profile-email').value = currentUser.email || '';
 }
 
 function updateOfferCount() {
-    document.getElementById('offer-count').innerText = offers.length;
+    if (!currentUser) return;
+    const count = offers.filter(o => o.offeredByEmail === currentUser.email || o.sellerEmail === currentUser.email).length;
+    document.getElementById('offer-count').innerText = count;
 }
 
-// Auto Refresh Polling
-setInterval(() => {
-    const storedItems = JSON.parse(localStorage.getItem('tradex_items'));
-    if (storedItems && storedItems.length !== items.length) {
-        items = storedItems;
-        applyFilters();
-    }
-}, 5000);
-
-// Initialize
-loadProfileForm();
-toggleLocationInputChoice('GPS');
-applyFilters();
-updateOfferCount();
+// Initial session check
+checkAuthStatus();
