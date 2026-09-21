@@ -3,94 +3,453 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradeX - Swap Your Goods</title>
+    <title>TradeX - Safe Peer-to-Peer Barter & Trade</title>
     <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
-    <!-- Navigation Header -->
-    <header class="navbar">
-        <div class="logo">Trade<span>X</span></div>
-        <nav class="nav-links">
-            <button class="nav-btn active" onclick="switchTab('explore-tab')">Explore Items</button>
-            <button class="nav-btn" onclick="switchTab('post-tab')">Post an Item</button>
-            <button class="nav-btn" onclick="switchTab('offers-tab')">My Trade Offers (<span id="offer-count">0</span>)</button>
-        </nav>
+    <!-- Notification Toast Container -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Top Navigation Header -->
+    <header class="app-header">
+        <div class="logo-container">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 3l4 4-4 4"/>
+                <path d="M20 7H4"/>
+                <path d="M8 21l-4-4 4-4"/>
+                <path d="M4 17h16"/>
+            </svg>
+            <h1>TradeX</h1>
+        </div>
+        <div class="header-actions">
+            <button id="location-btn" class="location-chip" onclick="requestUserLocation()">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
+                <span id="location-status">Enable GPS</span>
+            </button>
+        </div>
     </header>
 
-    <main class="container">
-
-        <!-- TAB 1: Explore Items -->
+    <!-- Main Application Viewports -->
+    <main class="app-main">
+        
+        <!-- EXPLORE TAB -->
         <section id="explore-tab" class="tab-content active">
-            <h2>Items Available for Trade</h2>
+            <div class="filter-card">
+                <div class="search-bar">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <input type="text" id="search-input" placeholder="Search items, tags, sellers, locations..." oninput="applyFilters()">
+                </div>
+                
+                <div class="filter-grid">
+                    <select id="filter-category" onchange="applyFilters()">
+                        <option value="ALL">All Categories</option>
+                        <option value="Electronics">Electronics</option>
+                        <option value="Fashion">Fashion & Apparel</option>
+                        <option value="Home">Home & Garden</option>
+                        <option value="Vehicles">Vehicles & Parts</option>
+                        <option value="Gaming">Gaming & Hobbies</option>
+                    </select>
+
+                    <select id="filter-status" onchange="applyFilters()">
+                        <option value="ALL">All Listing Statuses</option>
+                        <option value="OPEN">Open for Offers</option>
+                        <option value="CLOSED">Trade Completed</option>
+                    </select>
+
+                    <select id="filter-date" onchange="applyFilters()">
+                        <option value="ALL">Any Time</option>
+                        <option value="TODAY">Listed Today</option>
+                        <option value="WEEK">Past 7 Days</option>
+                        <option value="MONTH">Past 30 Days</option>
+                    </select>
+
+                    <select id="sort-price" onchange="applyFilters()">
+                        <option value="NEWEST">Newest First</option>
+                        <option id="distance-sort-option" value="DISTANCE" disabled>Nearest to Me (GPS)</option>
+                        <option value="LOW_HIGH">Value: Low to High</option>
+                        <option value="HIGH_LOW">Value: High to Low</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Security Banner -->
+            <div class="security-banner-strip">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 11 12 14 22 4"/></svg>
+                <span><strong>Protected Swaps:</strong> Dual OTP Release + In-App Cash Escrow Active on all deals.</span>
+            </div>
+
             <div id="item-grid" class="item-grid">
-                <!-- Items will dynamically load here -->
+                <!-- Rendered dynamically -->
             </div>
         </section>
 
-        <!-- TAB 2: Post an Item -->
+        <!-- CREATE LISTING TAB -->
         <section id="post-tab" class="tab-content">
             <div class="form-card">
-                <h2>Post an Item to Trade</h2>
+                <h2>List Item for Trade</h2>
+                <p class="subtitle">Describe your item clearly and what you are looking to swap it for.</p>
+
                 <form id="post-item-form">
                     <div class="form-group">
-                        <label for="item-title">Item Title</label>
-                        <input type="text" id="item-title" placeholder="e.g. Wireless Headphones" required>
+                        <label for="seller-name">Your Display Name *</label>
+                        <input type="text" id="seller-name" required placeholder="e.g. Zipho D.">
                     </div>
+
                     <div class="form-group">
-                        <label for="item-category">Category</label>
-                        <select id="item-category" required>
-                            <option value="">Select Category</option>
-                            <option value="Electronics">Electronics</option>
-                            <option value="Fashion">Fashion</option>
-                            <option value="Home & Garden">Home & Garden</option>
-                            <option value="Gaming">Gaming</option>
-                            <option value="Books & Media">Books & Media</option>
-                        </select>
+                        <label for="item-title">Item Title *</label>
+                        <input type="text" id="item-title" required placeholder="e.g. Sony WH-1000XM4 Headphones">
                     </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="item-category">Category *</label>
+                            <select id="item-category" required>
+                                <option value="Electronics">Electronics</option>
+                                <option value="Fashion">Fashion & Apparel</option>
+                                <option value="Home">Home & Garden</option>
+                                <option value="Vehicles">Vehicles & Parts</option>
+                                <option value="Gaming">Gaming & Hobbies</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="item-price">Estimated Original Price / Value (R) *</label>
+                            <input type="number" id="item-price" required min="1" placeholder="e.g. 2500">
+                        </div>
+                    </div>
+
                     <div class="form-group">
-                        <label for="item-image">Image URL</label>
-                        <input type="url" id="item-image" placeholder="https://images.unsplash.com/photo-..." required>
+                        <label>Location Setting *</label>
+                        <div class="radio-group">
+                            <label class="radio-label">
+                                <input type="radio" name="location-choice" value="GPS" checked onchange="toggleLocationInputChoice(this.value)">
+                                Use Current GPS Location
+                            </label>
+                            <label class="radio-label">
+                                <input type="radio" name="location-choice" value="MANUAL" onchange="toggleLocationInputChoice(this.value)">
+                                Enter Physical Address
+                            </label>
+                        </div>
                     </div>
+
+                    <div class="form-group" id="manual-address-group" style="display:none;">
+                        <label for="item-address">Meeting / Pickup Address *</label>
+                        <input type="text" id="item-address" placeholder="e.g. Govan Mbeki Ave, Port Elizabeth">
+                    </div>
+
                     <div class="form-group">
-                        <label for="item-desc">Description</label>
-                        <textarea id="item-desc" rows="3" placeholder="Describe condition, specifications, etc." required></textarea>
+                        <label for="item-image">Upload Clear Photos *</label>
+                        <input type="file" id="item-image" accept="image/*" required>
                     </div>
+
                     <div class="form-group">
-                        <label for="item-wanted">Looking to Trade For</label>
-                        <input type="text" id="item-wanted" placeholder="e.g. Smart Watch or Mechanical Keyboard" required>
+                        <label for="item-desc">Condition & Details *</label>
+                        <textarea id="item-desc" rows="3" required placeholder="Describe condition, age, minor flaws, accessories included..."></textarea>
                     </div>
-                    <button type="submit" class="primary-btn">Publish Listing</button>
+
+                    <div class="form-group">
+                        <label for="item-wanted">What do you want in return? *</label>
+                        <input type="text" id="item-wanted" required placeholder="e.g. Mechanical Keyboard or Gaming Tablet">
+                    </div>
+
+                    <button type="submit" class="submit-btn">Publish Trade Listing</button>
                 </form>
             </div>
         </section>
 
-        <!-- TAB 3: My Trade Offers -->
+        <!-- OFFERS & ESCROW TAB -->
         <section id="offers-tab" class="tab-content">
-            <h2>Your Pending & Received Trade Offers</h2>
-            <div id="offers-list" class="offers-list">
-                <!-- Offers will load here -->
+            <div class="tab-header">
+                <h2>Trade Proposals & Safe Escrow</h2>
+                <p class="subtitle">Manage negotiations, hold top-ups in escrow, and execute secure meetups.</p>
+            </div>
+            <div id="offers-list" class="offers-container">
+                <!-- Rendered dynamically -->
+            </div>
+        </section>
+
+        <!-- SAFE ZONES & MAP TAB -->
+        <section id="safezones-tab" class="tab-content">
+            <div class="tab-header">
+                <h2>Safe Exchange Zones</h2>
+                <p class="subtitle">Verified, public, high-security meetup locations in your city.</p>
+            </div>
+            
+            <div class="safe-zone-card">
+                <div class="safe-zone-badge">VERIFIED SAFE ZONE</div>
+                <h3>Port Elizabeth Central Police Station</h3>
+                <p>Public parking forecourt under 24/7 CCTV surveillance.</p>
+                <div class="safe-zone-info">
+                    <span>📍 Baakens Street, Govan Mbeki Ave, Gqeberha</span>
+                    <span>🛡️ Police Monitoring</span>
+                </div>
+            </div>
+
+            <div class="safe-zone-card">
+                <div class="safe-zone-badge">VERIFIED SAFE ZONE</div>
+                <h3>Walmer Park Shopping Centre - Food Court Hub</h3>
+                <p>High foot-traffic mall zone with private security guards on duty.</p>
+                <div class="safe-zone-info">
+                    <span>📍 16th Ave, Walmer, Gqeberha</span>
+                    <span>🛡️ Security Guarded</span>
+                </div>
+            </div>
+
+            <div class="safe-zone-card">
+                <div class="safe-zone-badge">VERIFIED SAFE ZONE</div>
+                <h3>Baywest Mall Security Point</h3>
+                <p>Monitored drop-off and swap location at Entrance 1.</p>
+                <div class="safe-zone-info">
+                    <span>📍 100 Baywest Blvd, Hunters Retreat</span>
+                    <span>🛡️ Monitored Zone</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- PROFILE TAB -->
+        <section id="profile-tab" class="tab-content">
+            <div class="form-card">
+                <h2>User Trust Profile</h2>
+                <div class="trust-score-badge">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <div>
+                        <strong id="trust-rating-val">4.9 / 5.0 Trust Score</strong>
+                        <div id="trust-details-val" style="font-size:0.78rem; color:#64748b;">Verified ID & Phone • 100% Trade Completion</div>
+                    </div>
+                </div>
+
+                <form id="profile-form">
+                    <div class="form-group">
+                        <label for="profile-full-name">Full Name *</label>
+                        <input type="text" id="profile-full-name" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="profile-email">Email Address *</label>
+                        <input type="email" id="profile-email" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="profile-phone">Mobile Phone (Identity Verified) *</label>
+                        <input type="tel" id="profile-phone" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="profile-default-address">Default Address *</label>
+                        <input type="text" id="profile-default-address" required>
+                    </div>
+
+                    <button type="submit" class="submit-btn">Save Profile Changes</button>
+                    <button type="button" class="reset-btn" onclick="resetLocalAccountData()">Clear Cached Local Trades</button>
+                </form>
             </div>
         </section>
 
     </main>
 
-    <!-- Trade Proposal Modal -->
-    <div id="trade-modal" class="modal">
-        <div class="modal-content">
-            <span class="close-btn" onclick="closeModal()">&times;</span>
-            <h3 id="modal-item-title">Offer Trade</h3>
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+        <button class="bottom-nav-btn active" onclick="switchTab('explore-tab', this)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
+            <span>Explore</span>
+        </button>
+
+        <button class="bottom-nav-btn" onclick="switchTab('post-tab', this)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+            <span>List Item</span>
+        </button>
+
+        <button class="bottom-nav-btn" onclick="switchTab('offers-tab', this)">
+            <div class="nav-badge-wrapper">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                <span id="offer-count" class="badge-count">0</span>
+            </div>
+            <span>Trades</span>
+        </button>
+
+        <button class="bottom-nav-btn" onclick="switchTab('safezones-tab', this)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <span>Safe Zones</span>
+        </button>
+
+        <button class="bottom-nav-btn" onclick="switchTab('profile-tab', this)">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <span>Profile</span>
+        </button>
+    </nav>
+
+    <!-- MODAL 1: ITEM DETAIL MODAL -->
+    <div id="detail-modal" class="modal-overlay">
+        <div class="modal-card">
+            <button class="close-modal-btn" onclick="closeDetailModal()">&times;</button>
+            <div id="detail-modal-body"></div>
+        </div>
+    </div>
+
+    <!-- MODAL 2: OFFER PROPOSAL MODAL -->
+    <div id="trade-modal" class="modal-overlay">
+        <div class="modal-card">
+            <button class="close-modal-btn" onclick="closeTradeModal()">&times;</button>
+            <h2 id="modal-item-title">Propose Trade Offer</h2>
             <form id="trade-offer-form">
                 <input type="hidden" id="target-item-id">
+                
                 <div class="form-group">
-                    <label for="offered-item">What are you offering in return?</label>
-                    <input type="text" id="offered-item" placeholder="e.g. Vintage Leather Jacket" required>
+                    <label for="offered-by-name">Your Name / Trader ID *</label>
+                    <input type="text" id="offered-by-name" required placeholder="e.g. Sarah M.">
                 </div>
+
                 <div class="form-group">
-                    <label for="offer-note">Message to owner</label>
-                    <textarea id="offer-note" rows="3" placeholder="Add contact details or details about your item..."></textarea>
+                    <label for="offered-item">Item You Are Offering *</label>
+                    <input type="text" id="offered-item" required placeholder="e.g. iPad Air 64GB">
                 </div>
-                <button type="submit" class="primary-btn">Send Trade Proposal</button>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="offered-price">Estimated Value (R) *</label>
+                        <input type="number" id="offered-price" required min="1" placeholder="e.g. 3000">
+                    </div>
+                    <div class="form-group">
+                        <label for="offered-cash">Optional Cash Top-Up (R)</label>
+                        <input type="number" id="offered-cash" min="0" placeholder="e.g. 500">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="offered-image">Photo of Your Offered Item *</label>
+                    <input type="file" id="offered-image" accept="image/*" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="offer-desc">Condition of Offered Item *</label>
+                    <textarea id="offer-desc" rows="2" required placeholder="Describe condition, battery health, inclusions..."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="offer-note">Proposed Safe Meeting Location / Note</label>
+                    <input type="text" id="offer-note" placeholder="e.g. Can meet at Walmer Park Mall safe zone">
+                </div>
+
+                <button type="submit" class="submit-btn">Send Trade Proposal</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 3: FULL OFFER PREVIEW & NEGOTIATION MODAL -->
+    <div id="offer-detail-modal" class="modal-overlay">
+        <div class="modal-card">
+            <button class="close-modal-btn" onclick="closeOfferDetailModal()">&times;</button>
+            <div id="offer-detail-modal-body"></div>
+        </div>
+    </div>
+
+    <!-- MODAL 4: COUNTER-OFFER / NEGOTIATION MODAL -->
+    <div id="counter-modal" class="modal-overlay">
+        <div class="modal-card">
+            <button class="close-modal-btn" onclick="closeCounterModal()">&times;</button>
+            <h2>Negotiate Trade Terms</h2>
+            <p style="font-size:0.85rem; color:#64748b; margin-bottom:1rem;">
+                Sending response as: <strong id="auto-trader-badge" style="color:#2563eb;">---</strong>
+            </p>
+            
+            <form id="counter-offer-form">
+                <input type="hidden" id="counter-offer-id">
+
+                <div class="form-group">
+                    <label for="counter-message">Your Counter-Proposal Message *</label>
+                    <textarea id="counter-message" rows="3" required placeholder="e.g., I will accept if you add R200 cash top-up or meet at the police station safe zone."></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="counter-cash">Adjusted Cash Top-up Requirement (R)</label>
+                    <input type="number" id="counter-cash" min="0" placeholder="e.g. 300">
+                </div>
+
+                <button type="submit" class="submit-btn">Submit Counter Offer</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 5: ESCROW CASH DEPOSIT MODAL -->
+    <div id="escrow-modal" class="modal-overlay">
+        <div class="modal-card">
+            <button class="close-modal-btn" onclick="closeEscrowModal()">&times;</button>
+            <h2>Secure Cash Top-Up in Escrow</h2>
+            <p class="subtitle">Funds are held safely by TradeX Vault until both parties verify the physical swap in person.</p>
+
+            <div class="escrow-breakdown">
+                <div style="display:flex; justify-style:space-between; margin-bottom:0.5rem;">
+                    <span>Top-Up Amount:</span>
+                    <strong id="escrow-amount-display">R0.00</strong>
+                </div>
+                <div style="display:flex; justify-style:space-between; margin-bottom:0.5rem; color:#16a34a;">
+                    <span>Escrow Service Fee:</span>
+                    <strong>R0.00 (Free)</strong>
+                </div>
+                <hr style="margin:0.5rem 0; border:0; border-top:1px dashed #cbd5e1;">
+                <div style="display:flex; justify-style:space-between; font-weight:700;">
+                    <span>Total Deposit Required:</span>
+                    <strong id="escrow-total-display">R0.00</strong>
+                </div>
+            </div>
+
+            <form id="escrow-form" onsubmit="executeEscrowDeposit(event)">
+                <input type="hidden" id="escrow-offer-id">
+                <div class="form-group">
+                    <label>Select Payment Method *</label>
+                    <select id="escrow-payment-method" required>
+                        <option value="CARD">Credit / Debit Card (Instant)</option>
+                        <option value="OZOW">Ozow Instant EFT</option>
+                        <option value="PAYFAST">PayFast Escrow Wallet</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Cardholder / Account Name *</label>
+                    <input type="text" id="escrow-card-name" required placeholder="e.g. Z Dastile">
+                </div>
+
+                <button type="submit" class="submit-btn" style="background:#16a34a;">Deposit Cash into Secure Escrow</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL 6: IN-PERSON INSPECTION & OTP HANDOVER VERIFICATION MODAL -->
+    <div id="otp-modal" class="modal-overlay">
+        <div class="modal-card">
+            <button class="close-modal-btn" onclick="closeOtpModal()">&times;</button>
+            <h2>In-Person Handover Verification</h2>
+            <p class="subtitle">Inspect both items physically before exchanging codes. Once both codes are verified, the trade is permanently completed and escrow cash is released.</p>
+
+            <div class="otp-display-box">
+                <div class="otp-role-label">Your Unique Release PIN</div>
+                <div class="otp-code" id="my-otp-display">----</div>
+                <p style="font-size:0.75rem; color:#64748b; margin-top:0.25rem;">Give this code to the other trader ONLY AFTER you have checked their item and received it.</p>
+            </div>
+
+            <hr style="margin:1.25rem 0; border:0; border-top:1px solid #e2e8f0;">
+
+            <form id="otp-verification-form" onsubmit="submitHandoverPin(event)">
+                <input type="hidden" id="otp-offer-id">
+                <div class="form-group">
+                    <label for="received-pin-input">Enter PIN Provided by Other Trader *</label>
+                    <input type="text" id="received-pin-input" required maxlength="4" placeholder="e.g. 4821" style="font-size:1.5rem; text-align:center; letter-spacing:0.3rem;">
+                </div>
+
+                <div class="checklist-box">
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="check-inspect" required>
+                        I have inspected the item physical condition and it matches the offer description.
+                    </label>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="check-cash" required>
+                        I have handed over/received all required items and agreed top-ups.
+                    </label>
+                </div>
+
+                <button type="submit" class="submit-btn" style="background:#2563eb; margin-top:1rem;">Verify PIN & Finalize Trade</button>
             </form>
         </div>
     </div>
