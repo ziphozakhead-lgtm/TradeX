@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TradeX - Swap Your Goods</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+    <!-- Navigation Header -->
+    <header class="navbar">
+        <div class="logo">Trade<span>X</span></div>
+        <nav class="nav-links">
+            <button class="nav-btn active" onclick="switchTab('explore-tab')">Explore Items</button>
+            <button class="nav-btn" onclick="switchTab('post-tab')">Post an Item</button>
+            <button class="nav-btn" onclick="switchTab('offers-tab')">My Trade Offers (<span id="offer-count">0</span>)</button>
+        </nav>
+    </header>
+
+    <main class="container">
+
+        <!-- TAB 1: Explore Items -->
+        <section id="explore-tab" class="tab-content active">
+            <h2>Items Available for Trade</h2>
+            <div id="item-grid" class="item-grid">
+                <!-- Items will dynamically load here -->
+            </div>
+        </section>
+
+        <!-- TAB 2: Post an Item -->
+        <section id="post-tab" class="tab-content">
+            <div class="form-card">
+                <h2>Post an Item to Trade</h2>
+                <form id="post-item-form">
+                    <div class="form-group">
+                        <label for="item-title">Item Title</label>
+                        <input type="text" id="item-title" placeholder="e.g. Wireless Headphones" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="item-category">Category</label>
+                        <select id="item-category" required>
+                            <option value="">Select Category</option>
+                            <option value="Electronics">Electronics</option>
+                            <option value="Fashion">Fashion</option>
+                            <option value="Home & Garden">Home & Garden</option>
+                            <option value="Gaming">Gaming</option>
+                            <option value="Books & Media">Books & Media</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="item-image">Image URL</label>
+                        <input type="url" id="item-image" placeholder="https://images.unsplash.com/photo-..." required>
+                    </div>
+                    <div class="form-group">
+                        <label for="item-desc">Description</label>
+                        <textarea id="item-desc" rows="3" placeholder="Describe condition, specifications, etc." required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="item-wanted">Looking to Trade For</label>
+                        <input type="text" id="item-wanted" placeholder="e.g. Smart Watch or Mechanical Keyboard" required>
+                    </div>
+                    <button type="submit" class="primary-btn">Publish Listing</button>
+                </form>
+            </div>
+        </section>
+
+        <!-- TAB 3: My Trade Offers -->
+        <section id="offers-tab" class="tab-content">
+            <h2>Your Pending & Received Trade Offers</h2>
+            <div id="offers-list" class="offers-list">
+                <!-- Offers will load here -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Trade Proposal Modal -->
+    <div id="trade-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <h3 id="modal-item-title">Offer Trade</h3>
+            <form id="trade-offer-form">
+                <input type="hidden" id="target-item-id">
+                <div class="form-group">
+                    <label for="offered-item">What are you offering in return?</label>
+                    <input type="text" id="offered-item" placeholder="e.g. Vintage Leather Jacket" required>
+                </div>
+                <div class="form-group">
+                    <label for="offer-note">Message to owner</label>
+                    <textarea id="offer-note" rows="3" placeholder="Add contact details or details about your item..."></textarea>
+                </div>
+                <button type="submit" class="primary-btn">Send Trade Proposal</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
