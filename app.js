@@ -44,12 +44,12 @@ let offers = JSON.parse(localStorage.getItem('offers')) || [];
 let chatMessages = JSON.parse(localStorage.getItem('chatMessages')) || {};
 let activeChatOfferId = null;
 
-// Firebase Connection Initialization
+// Firebase Check
 let isFirebaseConnected = typeof firebase !== 'undefined' && firebase.apps && firebase.apps.length > 0;
 let db = isFirebaseConnected ? firebase.database() : null;
 
 /* ==========================================================================
-   INITIALIZATION & EVENT LISTENERS
+   INITIALIZATION & EVENT DELEGATION
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -83,6 +83,9 @@ function setupEventListeners() {
         if (e.target.id === 'post-item-form') {
             e.preventDefault();
             handleCreateListing();
+        } else if (e.target.id === 'auth-form') {
+            e.preventDefault();
+            handleAuthSubmit();
         } else if (e.target.id === 'offer-form') {
             e.preventDefault();
             handleOfferSubmit();
@@ -99,19 +102,21 @@ function setupEventListeners() {
     document.addEventListener('click', (e) => {
         const target = e.target;
 
-        // Login / Logout
-        if (target.closest('#btn-login, .btn-login')) {
+        // Login trigger
+        if (target.closest('#btn-login, .btn-login-trigger')) {
             e.preventDefault();
-            handleLogin();
+            openModal('auth-modal');
             return;
         }
-        if (target.closest('#btn-logout, .btn-logout')) {
+
+        // Logout trigger
+        if (target.closest('#btn-logout')) {
             e.preventDefault();
             handleLogout();
             return;
         }
 
-        // GPS toggle trigger
+        // GPS Toggle Button
         if (target.closest('#btn-gps-toggle')) {
             e.preventDefault();
             getUserLocation(true);
@@ -127,7 +132,7 @@ function setupEventListeners() {
             return;
         }
 
-        // Offer Button Trigger
+        // Trade / Offer Button
         const tradeBtn = target.closest('.btn-trade');
         if (tradeBtn) {
             e.preventDefault();
@@ -137,7 +142,7 @@ function setupEventListeners() {
         }
     });
 
-    // Filters
+    // Search and Filters
     const searchInput = document.getElementById('search-input');
     const categoryFilter = document.getElementById('category-filter');
     const distanceFilter = document.getElementById('distance-filter');
@@ -151,24 +156,26 @@ function setupEventListeners() {
    AUTHENTICATION & PROFILE MANAGEMENT
    ========================================================================== */
 
-function handleLogin() {
-    const name = prompt("Enter your name to sign in:");
-    if (!name || !name.trim()) return false;
+function handleAuthSubmit() {
+    const nameInput = document.getElementById('auth-name').value.trim();
+    const emailInput = document.getElementById('auth-email').value.trim().toLowerCase();
 
-    const email = prompt("Enter your email address:");
-    if (!email || !email.trim()) return false;
+    if (!nameInput || !emailInput) {
+        showToast("Please complete both fields.");
+        return;
+    }
 
     currentUser = {
-        fullName: name.trim(),
-        email: email.trim().toLowerCase()
+        fullName: nameInput,
+        email: emailInput
     };
 
     saveLocalData();
     updateUserUI();
     renderProfileView();
     renderOffersList();
-    showToast(`Welcome back, ${currentUser.fullName}!`);
-    return true;
+    closeModal('auth-modal');
+    showToast(`Logged in as ${currentUser.fullName}`);
 }
 
 function handleLogout() {
@@ -177,7 +184,7 @@ function handleLogout() {
     updateUserUI();
     renderProfileView();
     renderOffersList();
-    showToast("Signed out successfully.");
+    showToast("Logged out successfully.");
 }
 
 function updateUserUI() {
@@ -186,13 +193,14 @@ function updateUserUI() {
 
     if (currentUser) {
         authStatusElement.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span style="font-size: 13px;">Hi, <strong>${escapeHtml(currentUser.fullName)}</strong></span>
-                <button type="button" id="btn-logout" class="btn-login" style="background:#ff3b30; padding:4px 10px; font-size:12px;">Logout</button>
-            </div>
+            <button type="button" class="user-chip" id="btn-logout">
+                ${escapeHtml(currentUser.fullName.split(' ')[0])} (Logout)
+            </button>
         `;
     } else {
-        authStatusElement.innerHTML = `<button type="button" id="btn-login" class="btn-login">Sign In / Register</button>`;
+        authStatusElement.innerHTML = `
+            <button type="button" class="user-chip btn-login-trigger">Sign In</button>
+        `;
     }
 }
 
@@ -202,9 +210,9 @@ function renderProfileView() {
 
     if (!currentUser) {
         container.innerHTML = `
-            <div style="text-align:center; padding: 20px 0;">
-                <p style="margin-bottom: 15px; color: #666;">You are currently browsing as a Guest.</p>
-                <button type="button" id="btn-login" class="submit-btn">Sign In / Register</button>
+            <div style="text-align: center; padding: 20px 0;">
+                <p style="color: #6e6e73; margin-bottom: 1rem;">You are currently browsing as a guest.</p>
+                <button type="button" class="submit-btn btn-login-trigger" style="max-width: 240px; margin: 0 auto;">Sign In / Register</button>
             </div>
         `;
         return;
@@ -213,22 +221,22 @@ function renderProfileView() {
     const myListings = items.filter(item => item.sellerEmail === currentUser.email);
 
     container.innerHTML = `
-        <div style="margin-bottom: 20px; padding-bottom: 15px; border-bottom: 1px solid #eee;">
-            <p style="font-size: 14px; color: #666;">Account Details</p>
-            <h3 style="margin-top: 4px;">${escapeHtml(currentUser.fullName)}</h3>
-            <p style="color: #0071e3; font-size: 14px;">${escapeHtml(currentUser.email)}</p>
+        <div style="margin-bottom: 1.5rem; padding-bottom: 1rem; border-bottom: 1px solid rgba(0,0,0,0.06);">
+            <p style="font-size: 0.8rem; font-weight: 600; color: #8e8e93; text-transform: uppercase;">Active Profile</p>
+            <h3 style="font-size: 1.2rem; font-weight: 700; margin-top: 0.2rem;">${escapeHtml(currentUser.fullName)}</h3>
+            <p style="color: #0071e3; font-size: 0.9rem;">${escapeHtml(currentUser.email)}</p>
         </div>
         <div>
-            <h4 style="margin-bottom: 10px;">My Published Items (${myListings.length})</h4>
-            ${myListings.length === 0 ? '<p style="color:#888; font-size:13px;">No items posted yet.</p>' : ''}
-            <div style="display:flex; flex-direction:column; gap:10px;">
+            <h4 style="font-size: 0.95rem; font-weight: 600; margin-bottom: 0.8rem;">My Active Listings (${myListings.length})</h4>
+            ${myListings.length === 0 ? '<p style="color:#8e8e93; font-size:0.85rem;">You have not published any items yet.</p>' : ''}
+            <div style="display: flex; flex-direction: column; gap: 0.6rem;">
                 ${myListings.map(item => `
-                    <div style="display:flex; justify-content:space-between; align-items:center; background:#f9f9f9; padding:10px 14px; border-radius:8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f2f2f7; padding: 0.75rem 1rem; border-radius: 12px;">
                         <div>
-                            <strong>${escapeHtml(item.title)}</strong>
-                            <div style="font-size:12px; color:#2e7d32; font-weight:bold;">R ${item.price}</div>
+                            <strong style="font-size: 0.9rem;">${escapeHtml(item.title)}</strong>
+                            <div style="font-size: 0.8rem; color: #2e7d32; font-weight: 700;">R ${item.price}</div>
                         </div>
-                        <span style="font-size:11px; background:#e0e0e0; padding:2px 8px; border-radius:4px;">${item.status}</span>
+                        <span class="badge">${item.status}</span>
                     </div>
                 `).join('')}
             </div>
@@ -252,20 +260,18 @@ function getUserLocation(userInitiated = false) {
                 const gpsBtn = document.getElementById('btn-gps-toggle');
                 if (gpsBtn) {
                     gpsBtn.classList.add('active');
-                    gpsBtn.textContent = '📍 GPS Active';
+                    gpsBtn.innerHTML = '<span>📍 GPS Active</span>';
                 }
                 applyFilters();
-                if (userInitiated) showToast("Location updated successfully.");
+                if (userInitiated) showToast("Location acquired.");
             },
             (err) => {
-                console.warn("Geolocation warning/error:", err.message);
-                if (userInitiated) showToast("Could not retrieve GPS location.");
+                if (userInitiated) showToast("Unable to access GPS location.");
             }
         );
     }
 }
 
-// Distance calculation using Haversine Formula (returns km)
 function calculateDistanceKm(lat1, lon1, lat2, lon2) {
     if (!lat1 || !lon1 || !lat2 || !lon2) return null;
     const R = 6371;
@@ -280,12 +286,13 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
 }
 
 /* ==========================================================================
-   ITEM CREATION & FILTERING
+   MARKETPLACE CREATION & FILTERING
    ========================================================================== */
 
 async function handleCreateListing() {
     if (!currentUser) {
-        if (!handleLogin()) return;
+        openModal('auth-modal');
+        return;
     }
 
     const titleInput = document.getElementById('item-title');
@@ -302,7 +309,7 @@ async function handleCreateListing() {
         try {
             imageUrl = await readFileAsDataURL(imageInput.files[0]);
         } catch (err) {
-            console.error("Error reading image:", err);
+            console.error("Error reading photo:", err);
         }
     }
 
@@ -331,7 +338,7 @@ async function handleCreateListing() {
     }
 
     document.getElementById('post-item-form').reset();
-    showToast("Listing created! Now visible in Rands.");
+    showToast("Listing published in South African Rands!");
     renderProfileView();
 
     const exploreBtn = document.querySelector('.bottom-nav-btn[data-tab="explore-tab"]');
@@ -373,8 +380,8 @@ function renderItemsGrid(itemsToRender) {
 
     if (itemsToRender.length === 0) {
         gridContainer.innerHTML = `
-            <div style="grid-column: 1/-1; text-align: center; padding: 40px 20px; color: #777;">
-                <p>No listings match your criteria.</p>
+            <div style="grid-column: 1/-1; text-align: center; padding: 60px 20px; color: #8e8e93;">
+                <p style="font-size: 0.95rem;">No items matched your search filters.</p>
             </div>
         `;
         return;
@@ -384,21 +391,21 @@ function renderItemsGrid(itemsToRender) {
         let distLabel = '';
         if (userLocation && item.lat && item.lng) {
             const d = calculateDistanceKm(userLocation.lat, userLocation.lng, item.lat, item.lng);
-            if (d !== null) distLabel = ` (${d} km away)`;
+            if (d !== null) distLabel = ` • ${d} km away`;
         }
 
         return `
             <div class="card" id="card-${item.id}">
                 <div style="position: relative;">
                     <img src="${item.image}" alt="${escapeHtml(item.title)}" loading="lazy" />
-                    <span class="badge" style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.6); color:#fff;">${escapeHtml(item.category)}</span>
+                    <span class="badge" style="position: absolute; top: 12px; left: 12px; background: rgba(0,0,0,0.6); color: #ffffff;">${escapeHtml(item.category)}</span>
                 </div>
                 <div class="card-body">
                     <h3 class="card-title">${escapeHtml(item.title)}</h3>
                     <div class="price-tag">R ${item.price}</div>
                     <div class="location-tag">📍 ${escapeHtml(item.location)}${distLabel}</div>
-                    <p style="font-size:12px; color:#555; margin-bottom:8px;">${escapeHtml(item.description)}</p>
-                    <div style="background:#f0f7f0; padding:8px; border-radius:6px; font-size:12px; margin-bottom:12px;">
+                    <p style="font-size: 0.82rem; color: #6e6e73; margin-bottom: 0.6rem; line-height: 1.35;">${escapeHtml(item.description)}</p>
+                    <div style="background: #f2f2f7; padding: 0.55rem; border-radius: 10px; font-size: 0.78rem; color: #1d1d1f; margin-bottom: 0.8rem;">
                         <strong>Wants:</strong> ${escapeHtml(item.wanted)}
                     </div>
                     <div class="card-actions">
@@ -411,32 +418,33 @@ function renderItemsGrid(itemsToRender) {
 }
 
 /* ==========================================================================
-   OFFERS, COUNTER-OFFERS & CASH TOP-UPS (IN RANDS)
+   OFFERS, COUNTER-OFFERS & CASH TOP-UPS
    ========================================================================== */
 
 function openOfferModal(targetItemId) {
     if (!currentUser) {
-        if (!handleLogin()) return;
+        openModal('auth-modal');
+        return;
     }
 
     const targetItem = items.find(i => i.id === targetItemId);
     if (!targetItem) return;
 
     if (targetItem.sellerEmail === currentUser.email) {
-        showToast("You cannot make an offer on your own item.");
+        showToast("You cannot offer on your own listing.");
         return;
     }
 
     document.getElementById('offer-target-item-id').value = targetItemId;
-    document.getElementById('offer-modal-title').textContent = `Offer on: ${targetItem.title} (R ${targetItem.price})`;
+    document.getElementById('offer-modal-title').textContent = `Offer for: ${targetItem.title} (R ${targetItem.price})`;
 
     const selectEl = document.getElementById('offer-my-item');
     const myItems = items.filter(i => i.sellerEmail === currentUser.email && i.status === 'OPEN');
 
-    selectEl.innerHTML = '<option value="">-- Cash Only / Direct Purchase --</option>' +
+    selectEl.innerHTML = '<option value="">-- Direct Cash / Top-Up Only --</option>' +
         myItems.map(i => `<option value="${i.id}">${escapeHtml(i.title)} (Est. R ${i.price})</option>`).join('');
 
-    document.getElementById('offer-modal').style.display = 'flex';
+    openModal('offer-modal');
 }
 
 function handleOfferSubmit() {
@@ -456,7 +464,7 @@ function handleOfferSubmit() {
         buyerEmail: currentUser.email,
         buyerName: currentUser.fullName,
         offeredItemId: myItem ? myItem.id : null,
-        offeredItemTitle: myItem ? myItem.title : 'Direct Trade Offer',
+        offeredItemTitle: myItem ? myItem.title : 'Direct Offer',
         cashTopupRands: cashTopup,
         message: message,
         status: 'PENDING',
@@ -472,7 +480,7 @@ function handleOfferSubmit() {
 
     closeModal('offer-modal');
     document.getElementById('offer-form').reset();
-    showToast("Trade offer submitted!");
+    showToast("Trade proposal sent!");
     renderOffersList();
 }
 
@@ -482,7 +490,12 @@ function renderOffersList() {
     if (!container) return;
 
     if (!currentUser) {
-        container.innerHTML = `<p style="text-align:center; padding: 20px; color: #666;">Please sign in to manage trade offers.</p>`;
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px 20px;">
+                <p style="color: #6e6e73; margin-bottom: 1rem;">Sign in to review trade offers and proposals.</p>
+                <button type="button" class="submit-btn btn-login-trigger" style="max-width: 200px; margin: 0 auto;">Sign In</button>
+            </div>
+        `;
         if (badge) badge.style.display = 'none';
         return;
     }
@@ -499,7 +512,11 @@ function renderOffersList() {
     }
 
     if (myOffers.length === 0) {
-        container.innerHTML = `<p style="text-align:center; padding: 30px; color: #888;">No active trade offers or counter-offers.</p>`;
+        container.innerHTML = `
+            <div style="text-align: center; padding: 60px 20px; color: #8e8e93;">
+                <p style="font-size: 0.95rem;">No active trade offers or proposals.</p>
+            </div>
+        `;
         return;
     }
 
@@ -510,31 +527,36 @@ function renderOffersList() {
 
         return `
             <div class="offer-card">
-                <div style="display:flex; justify-style:space-between; align-items:center; margin-bottom:8px;">
-                    <span class="badge" style="background:#0071e3; color:white;">${roleText}</span>
-                    <span style="font-size:12px; font-weight:bold; color:#ff9500;">${offer.status}</span>
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                    <span class="badge" style="background: rgba(0,113,227,0.1); color: #0071e3;">${roleText}</span>
+                    <span style="font-size: 0.78rem; font-weight: 700; color: #ff9500;">${offer.status}</span>
                 </div>
-                <h4>${escapeHtml(offer.targetItemTitle)}</h4>
-                <p style="font-size:13px; color:#555; margin-top:4px;">
-                    ${offer.offeredItemTitle ? `<strong>Offered Item:</strong> ${escapeHtml(offer.offeredItemTitle)}<br>` : ''}
-                    ${offer.cashTopupRands > 0 ? `<strong>Cash Top-Up:</strong> R ${offer.cashTopupRands}<br>` : ''}
-                    <strong>With:</strong> ${escapeHtml(otherParty)}
-                </p>
-                ${offer.message ? `<blockquote style="font-size:12px; font-style:italic; background:#f5f5f7; padding:6px 10px; border-radius:6px; margin: 8px 0;">"${escapeHtml(offer.message)}"</blockquote>` : ''}
-                
+                <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem;">${escapeHtml(offer.targetItemTitle)}</h4>
+                <div style="font-size: 0.85rem; color: #1d1d1f; line-height: 1.4;">
+                    ${offer.offeredItemTitle ? `<div><strong>Offered Item:</strong> ${escapeHtml(offer.offeredItemTitle)}</div>` : ''}
+                    ${offer.cashTopupRands > 0 ? `<div><strong>Cash Addition:</strong> <span style="color:#2e7d32; font-weight:bold;">R ${offer.cashTopupRands}</span></div>` : ''}
+                    <div><strong>With Trader:</strong> ${escapeHtml(otherParty)}</div>
+                </div>
+                ${offer.message ? `
+                    <p style="font-size: 0.82rem; font-style: italic; background: #f2f2f7; padding: 0.5rem 0.75rem; border-radius: 8px; margin: 0.6rem 0; color: #6e6e73;">
+                        "${escapeHtml(offer.message)}"
+                    </p>
+                ` : ''}
+
                 ${offer.meetup ? `
-                    <div style="background:#e8f5e9; padding:8px 12px; border-radius:8px; font-size:12px; margin:8px 0; color:#2e7d32;">
-                        <strong>📍 Meetup Details:</strong> ${escapeHtml(offer.meetup.location)} @${new Date(offer.meetup.datetime).toLocaleString()}
+                    <div style="background: rgba(52, 199, 89, 0.12); padding: 0.65rem; border-radius: 10px; font-size: 0.82rem; margin: 0.6rem 0; color: #1b5e20;">
+                        <strong>📍 Exchange Scheduled:</strong> ${escapeHtml(offer.meetup.location)} <br>
+                        <small>${new Date(offer.meetup.datetime).toLocaleString()}</small>
                     </div>
                 ` : ''}
 
-                <div class="card-actions" style="margin-top:10px; gap:6px;">
+                <div class="card-actions" style="margin-top: 0.75rem; gap: 0.5rem;">
                     ${isSeller && offer.status === 'PENDING' ? `
-                        <button type="button" onclick="acceptOffer('${offer.id}')" class="accept-btn" style="flex:1;">Accept</button>
+                        <button type="button" onclick="acceptOffer('${offer.id}')" class="accept-btn" style="flex:1;">Accept Offer</button>
                     ` : ''}
-                    <button type="button" onclick="openChatModal('${offer.id}')" class="secondary-btn" style="flex:1;">💬 Chat</button>
+                    <button type="button" onclick="openChatModal('${offer.id}')" class="secondary-btn" style="flex:1;">💬 Message</button>
                     ${offer.status === 'ACCEPTED' ? `
-                        <button type="button" onclick="openMeetupModal('${offer.id}')" class="primary-btn" style="flex:1;">📍 Meetup</button>
+                        <button type="button" onclick="openMeetupModal('${offer.id}')" class="primary-btn" style="flex:1;">📍 Set Meetup</button>
                     ` : ''}
                 </div>
             </div>
@@ -553,12 +575,12 @@ function acceptOffer(offerId) {
         db.ref('offers/' + offerId).update({ status: 'ACCEPTED' });
     }
 
-    showToast("Offer accepted! You can now arrange a meetup.");
+    showToast("Offer accepted! Set up a meetup location.");
     renderOffersList();
 }
 
 /* ==========================================================================
-   LIVE CHAT BETWEEN TRADERS
+   LIVE CHAT MESSAGING
    ========================================================================== */
 
 function openChatModal(offerId) {
@@ -573,7 +595,7 @@ function openChatModal(offerId) {
     document.getElementById('chat-item-title').textContent = offer.targetItemTitle;
 
     renderChatMessages();
-    document.getElementById('chat-modal').style.display = 'flex';
+    openModal('chat-modal');
 }
 
 function renderChatMessages() {
@@ -631,7 +653,7 @@ function handleSendChatMessage() {
 
 function openMeetupModal(offerId) {
     document.getElementById('meetup-offer-id').value = offerId;
-    document.getElementById('meetup-modal').style.display = 'flex';
+    openModal('meetup-modal');
 }
 
 function handleMeetupSubmit() {
@@ -657,12 +679,12 @@ function handleMeetupSubmit() {
     }
 
     closeModal('meetup-modal');
-    showToast("Meetup details saved!");
+    showToast("Meetup details confirmed!");
     renderOffersList();
 }
 
 /* ==========================================================================
-   UTILITY & UI HELPERS
+   UTILITY & INTERFACE HELPERS
    ========================================================================== */
 
 function switchTab(tabId, targetBtn) {
@@ -684,6 +706,11 @@ function switchTab(tabId, targetBtn) {
     if (tabId === 'profile-tab') renderProfileView();
 }
 
+function openModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.style.display = 'flex';
+}
+
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.style.display = 'none';
@@ -692,7 +719,6 @@ function closeModal(modalId) {
 function syncWithFirebase() {
     if (!isFirebaseConnected || !db) return;
 
-    // Listen to Listings
     db.ref('items').on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
@@ -705,7 +731,6 @@ function syncWithFirebase() {
         }
     });
 
-    // Listen to Offers
     db.ref('offers').on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
@@ -720,31 +745,19 @@ function syncWithFirebase() {
 }
 
 function showToast(message) {
-    let toast = document.getElementById('toast-notification');
-    if (!toast) {
-        toast = document.createElement('div');
-        toast.id = 'toast-notification';
-        toast.style.cssText = `
-            position: fixed;
-            bottom: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #1d1d1f;
-            color: white;
-            padding: 10px 20px;
-            border-radius: 20px;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
-            z-index: 1000;
-            font-size: 13px;
-            font-weight: 500;
-            transition: opacity 0.3s ease;
-        `;
-        document.body.appendChild(toast);
-    }
+    const container = document.getElementById('toast-container');
+    if (!container) return;
 
+    const toast = document.createElement('div');
+    toast.className = 'toast';
     toast.textContent = message;
-    toast.style.opacity = '1';
-    setTimeout(() => { toast.style.opacity = '0'; }, 3000);
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
 }
 
 function readFileAsDataURL(file) {
