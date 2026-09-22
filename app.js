@@ -43,7 +43,7 @@ let isFirebaseConnected = typeof firebase !== 'undefined' && firebase.apps && fi
 let db = isFirebaseConnected ? firebase.database() : null;
 
 /* ==========================================================================
-   APP INITIALIZATION
+   INITIALIZATION & EVENT DELEGATION
    ========================================================================== */
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -67,207 +67,193 @@ function saveLocalData() {
     }
 }
 
-/* ==========================================================================
-   FIREBASE REALTIME SYNC (WITH LOCAL FALLBACK)
-   ========================================================================== */
-
-function syncWithFirebase() {
-    if (!isFirebaseConnected || !db) return;
-
-    db.ref('items').on('value', (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-            const firebaseItems = Object.keys(data).map(key => data[key]);
-            
-            // Merge Firebase items with local items (deduplicating by id)
-            const itemMap = new Map();
-            [...items, ...firebaseItems].forEach(item => itemMap.set(item.id, item));
-            
-            items = Array.from(itemMap.values());
-            items.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-            
-            saveLocalData();
-            applyFilters();
-        }
-    }, (error) => {
-        console.warn("Firebase sync disabled or restricted. Running in local mode.", error);
-    });
-}
-
-/* ==========================================================================
-   GEOLOCATION
-   ========================================================================== */
-
-function getUserLocation() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(
-            (position) => {
-                userLocation = {
-                    lat: position.coords.latitude,
-                    lng: position.coords.longitude
-                };
-            },
-            (error) => {
-                console.warn("Geolocation permission denied or unavailable.", error);
-            }
-        );
-    }
-}
-
-/* ==========================================================================
-   NAVIGATION & UI CONTROLS
-   ========================================================================== */
-
 function setupEventListeners() {
-    // Navigation Tabs
-    const navButtons = document.querySelectorAll('.bottom-nav-btn');
-    navButtons.forEach(btn => {
-        btn.addEventListener('click', () => {
-            const targetTab = btn.getAttribute('data-tab');
-            if (targetTab) {
-                switchTab(targetTab, btn);
-            }
-        });
+    // 1. Intercept ALL Form Submissions globally (Prevents accidental reloads/clearing)
+    document.addEventListener('submit', (e) => {
+        e.preventDefault(); // Stop HTML default submit/reset behavior
+        
+        if (e.target.id === 'post-item-form') {
+            handleCreateListing(e);
+        } else {
+            // Treat any other submitted form as a login attempt
+            handleLogin(e);
+        }
     });
 
-    // Post Item Form Submission
-    const postForm = document.getElementById('post-item-form');
-    if (postForm) {
-        postForm.addEventListener('submit', handleCreateListing);
-    }
+    // 2. Global Click Delegation for Nav, Login/Logout, and Triggers
+    document.addEventListener('click', (e) => {
+        const target = e.target;
 
-    // Search and Filter Controls
+        // Login buttons
+        if (target.matches('#btn-login, .btn-login, [data-action="login"]')) {
+            e.preventDefault();
+            handleLogin(e);
+            return;
+        }
+
+        // Logout buttons
+        if (target.matches('#btn-logout, .btn-logout, [data-action="logout"]')) {
+            e.preventDefault();
+            handleLogout();
+            return;
+        }
+
+        // Navigation bar tabs
+        const navBtn = target.closest('.bottom-nav-btn');
+        if (navBtn) {
+            const targetTab = navBtn.getAttribute('data-tab');
+            if (targetTab) {
+                switchTab(targetTab, navBtn);
+            }
+        }
+    });
+
+    // 3. Search and Category Filters
     const searchInput = document.getElementById('search-input');
     const categoryFilter = document.getElementById('category-filter');
-    
     if (searchInput) searchInput.addEventListener('input', applyFilters);
     if (categoryFilter) categoryFilter.addEventListener('change', applyFilters);
 }
 
-function switchTab(tabId, targetBtn) {
-    // Hide all view tabs
-    const tabs = document.querySelectorAll('.tab-content');
-    tabs.forEach(tab => tab.classList.remove('active'));
+/* ==========================================================================
+   AUTHENTICATION LOGIC (HYBRID: READS INPUTS OR FALLS BACK TO PROMPT)
+   ========================================================================== */
 
-    // Show selected tab
-    const selectedTab = document.getElementById(tabId);
-    if (selectedTab) selectedTab.classList.add('active');
+function handleLogin(e) {
+    if (e) e.preventDefault();
 
-    // Update bottom navigation bar active state
-    if (targetBtn) {
-        document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
-        targetBtn.classList.add('active');
+    // Check if on-screen HTML inputs exist for name/email
+    const nameInput = document.getElementById('login-name') || 
+                      document.getElementById('user-name') || 
+                      document.getElementById('username') || 
+                      document.querySelector('input[type="text"]');
+
+    const emailInput = document.getElementById('login-email') || 
+                       document.getElementById('user-email') || 
+                       document.getElementById('email') || 
+                       document.querySelector('input[type="email"]');
+
+    let name = nameInput ? nameInput.value.trim() : '';
+    let email = emailInput ? emailInput.value.trim() : '';
+
+    // If no inputs were filled out or found, ask via prompts
+    if (!name) {
+        name = prompt("Enter your name to sign in / trade:");
+    }
+    if (name && !email) {
+        email = prompt("Enter your email address:");
     }
 
-    // Re-render items grid when switching to explore tab
-    if (tabId === 'explore-tab') {
-        applyFilters();
+    if (!name || !email) {
+        showSuccessToast("Login cancelled. Name and email are required.");
+        return false;
     }
+
+    currentUser = {
+        fullName: name.trim(),
+        email: email.trim().toLowerCase()
+    };
+
+    saveLocalData();
+    updateUserUI();
+    showSuccessToast(`Logged in as ${currentUser.fullName}`);
+
+    // Hide any login modals if present
+    const modal = document.querySelector('.modal, #login-modal');
+    if (modal) modal.style.display = 'none';
+
+    return true;
+}
+
+function handleLogout() {
+    currentUser = null;
+    saveLocalData();
+    updateUserUI();
+    showSuccessToast("Logged out successfully.");
 }
 
 function updateUserUI() {
     const authStatusElement = document.getElementById('auth-status');
     if (authStatusElement) {
         if (currentUser) {
-            authStatusElement.innerHTML = `<span>Welcome, <strong>${escapeHtml(currentUser.fullName)}</strong></span>`;
+            authStatusElement.innerHTML = `
+                <span>Welcome, <strong>${escapeHtml(currentUser.fullName)}</strong></span>
+                <button type="button" id="btn-logout" class="btn-logout" style="margin-left: 10px; padding: 4px 10px;">Logout</button>
+            `;
         } else {
-            authStatusElement.innerHTML = `<button type="button" onclick="handleLoginClick(event)" class="btn-login">Login / Sign Up</button>`;
+            authStatusElement.innerHTML = `<button type="button" id="btn-login" class="btn-login">Login / Sign Up</button>`;
         }
     }
 }
 
-function handleLoginClick(e) {
-    if (e) {
-        e.preventDefault();
-        e.stopPropagation();
-    }
-    checkAuthStatus();
-}
-
-function checkAuthStatus() {
-    if (!currentUser) {
-        const name = prompt("Enter your name to sign in / trade:");
-        if (!name) return false;
-
-        const email = prompt("Enter your email address:");
-        if (!email) return false;
-            
-        currentUser = {
-            fullName: name.trim(),
-            email: email.trim().toLowerCase()
-        };
-
-        saveLocalData();
-        updateUserUI();
-        showSuccessToast(`Logged in as ${currentUser.fullName}`);
-        return true;
-    }
-    return true;
-}
-
 /* ==========================================================================
-   CORE LISTING CREATION (FIXED & ROBUST)
+   CORE LISTING CREATION & PERSISTENCE
    ========================================================================== */
 
 async function handleCreateListing(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
 
-    // Ensure user is authenticated locally before creating an item
     if (!currentUser) {
-        const loggedIn = checkAuthStatus();
+        const loggedIn = handleLogin(e);
         if (!loggedIn) return;
     }
 
+    const titleInput = document.getElementById('item-title');
+    const categoryInput = document.getElementById('item-category');
+    const priceInput = document.getElementById('item-price');
+    const locationInput = document.getElementById('item-location');
+    const descInput = document.getElementById('item-desc');
+    const wantedInput = document.getElementById('item-wanted');
     const imageInput = document.getElementById('item-image');
-    let imageUrl = "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500"; // Fallback placeholder
 
-    // Convert uploaded image file to DataURL base64 for local persistence
+    let imageUrl = "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500";
+
     if (imageInput && imageInput.files && imageInput.files[0]) {
         try {
             imageUrl = await readFileAsDataURL(imageInput.files[0]);
         } catch (err) {
-            console.error("Image conversion error, using fallback placeholder:", err);
+            console.error("Error reading image file:", err);
         }
     }
 
-    // Construct the new item object
     const newItem = {
         id: 'item_' + Date.now(),
         sellerName: currentUser.fullName,
         sellerEmail: currentUser.email,
-        title: document.getElementById('item-title').value.trim(),
-        category: document.getElementById('item-category').value,
-        price: parseFloat(document.getElementById('item-price').value) || 0,
-        location: document.getElementById('item-location').value.trim(),
+        title: titleInput ? titleInput.value.trim() : 'Untitled Item',
+        category: categoryInput ? categoryInput.value : 'general',
+        price: priceInput ? parseFloat(priceInput.value) || 0 : 0,
+        location: locationInput ? locationInput.value.trim() : 'Local Area',
         lat: userLocation ? userLocation.lat : 40.7128,
         lng: userLocation ? userLocation.lng : -74.0060,
         image: imageUrl,
-        description: document.getElementById('item-desc').value.trim(),
-        wanted: document.getElementById('item-wanted').value.trim(),
+        description: descInput ? descInput.value.trim() : '',
+        wanted: wantedInput ? wantedInput.value.trim() : 'Open to offers',
         status: "OPEN",
         timestamp: new Date().toISOString()
     };
 
-    // 1. ALWAYS ADD LOCALLY FIRST
+    // 1. Add locally and re-render grid
     items.unshift(newItem);
     saveLocalData();
     applyFilters();
 
-    // 2. ATTEMPT FIREBASE SYNC IN BACKGROUND (Non-blocking)
+    // 2. Sync to Firebase if connected
     if (isFirebaseConnected && db) {
         db.ref('items/' + newItem.id).set(newItem).catch((err) => {
-            console.warn("Firebase save warning: Item stored locally.", err);
+            console.warn("Firebase save warning: Saved locally.", err);
         });
     }
 
     // Reset Form
-    e.target.reset();
+    const postForm = document.getElementById('post-item-form');
+    if (postForm) postForm.reset();
 
-    // Show Notification and Switch View to Explore Tab
     showSuccessToast("Listing published! Now visible on Explore screen.");
-    
-    const exploreNavBtn = document.querySelectorAll('.bottom-nav-btn')[0];
-    switchTab('explore-tab', exploreNavBtn);
+
+    // Redirect to Explore view
+    const exploreBtn = document.querySelectorAll('.bottom-nav-btn')[0];
+    switchTab('explore-tab', exploreBtn);
 }
 
 function readFileAsDataURL(file) {
@@ -280,7 +266,28 @@ function readFileAsDataURL(file) {
 }
 
 /* ==========================================================================
-   FILTERING & DISPLAY RENDERING
+   NAVIGATION & TAB SWITCHING
+   ========================================================================== */
+
+function switchTab(tabId, targetBtn) {
+    const tabs = document.querySelectorAll('.tab-content');
+    tabs.forEach(tab => tab.classList.remove('active'));
+
+    const selectedTab = document.getElementById(tabId);
+    if (selectedTab) selectedTab.classList.add('active');
+
+    if (targetBtn) {
+        document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
+        targetBtn.classList.add('active');
+    }
+
+    if (tabId === 'explore-tab') {
+        applyFilters();
+    }
+}
+
+/* ==========================================================================
+   FILTERING & RENDERING
    ========================================================================== */
 
 function applyFilters() {
@@ -310,7 +317,7 @@ function renderItemsGrid(itemsToRender) {
 
     if (itemsToRender.length === 0) {
         gridContainer.innerHTML = `
-            <div class="empty-state">
+            <div class="empty-state" style="text-align: center; padding: 40px 20px; color: #666;">
                 <p>No listings found. Be the first to post something!</p>
             </div>
         `;
@@ -348,7 +355,7 @@ function handleOffer(itemId) {
     if (!targetItem) return;
 
     if (!currentUser) {
-        const loggedIn = checkAuthStatus();
+        const loggedIn = handleLogin();
         if (!loggedIn) return;
     }
 
@@ -356,12 +363,41 @@ function handleOffer(itemId) {
 }
 
 /* ==========================================================================
-   UTILITY & TOAST NOTIFICATIONS
+   UTILITY & FIREBASE / GEOLOCATION
    ========================================================================== */
+
+function syncWithFirebase() {
+    if (!isFirebaseConnected || !db) return;
+
+    db.ref('items').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            const firebaseItems = Object.keys(data).map(key => data[key]);
+            const itemMap = new Map();
+            [...items, ...firebaseItems].forEach(item => itemMap.set(item.id, item));
+            
+            items = Array.from(itemMap.values());
+            items.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+            
+            saveLocalData();
+            applyFilters();
+        }
+    }, (error) => {
+        console.warn("Firebase sync disabled/restricted. Running in local mode.", error);
+    });
+}
+
+function getUserLocation() {
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => { userLocation = { lat: pos.coords.latitude, lng: pos.coords.longitude }; },
+            (err) => { console.warn("Geolocation unavailable.", err); }
+        );
+    }
+}
 
 function showSuccessToast(message) {
     let toast = document.getElementById('toast-notification');
-    
     if (!toast) {
         toast = document.createElement('div');
         toast.id = 'toast-notification';
@@ -385,10 +421,7 @@ function showSuccessToast(message) {
 
     toast.textContent = message;
     toast.style.opacity = '1';
-
-    setTimeout(() => {
-        toast.style.opacity = '0';
-    }, 3000);
+    setTimeout(() => { toast.style.opacity = '0'; }, 3000);
 }
 
 function escapeHtml(str) {
