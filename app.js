@@ -78,25 +78,46 @@ function saveLocalData() {
 }
 
 function setupEventListeners() {
-    // Form submissions
-    document.addEventListener('submit', (e) => {
-        if (e.target.id === 'post-item-form') {
-            e.preventDefault();
-            handleCreateListing();
-        } else if (e.target.id === 'auth-form') {
+    // Direct submission event listeners for reliability
+    const authForm = document.getElementById('auth-form');
+    if (authForm) {
+        authForm.addEventListener('submit', (e) => {
             e.preventDefault();
             handleAuthSubmit();
-        } else if (e.target.id === 'offer-form') {
+        });
+    }
+
+    const postForm = document.getElementById('post-item-form');
+    if (postForm) {
+        postForm.addEventListener('submit', (e) => {
+            e.preventDefault();
+            handleCreateListing();
+        });
+    }
+
+    const offerForm = document.getElementById('offer-form');
+    if (offerForm) {
+        offerForm.addEventListener('submit', (e) => {
             e.preventDefault();
             handleOfferSubmit();
-        } else if (e.target.id === 'chat-form') {
+        });
+    }
+
+    const chatForm = document.getElementById('chat-form');
+    if (chatForm) {
+        chatForm.addEventListener('submit', (e) => {
             e.preventDefault();
             handleSendChatMessage();
-        } else if (e.target.id === 'meetup-form') {
+        });
+    }
+
+    const meetupForm = document.getElementById('meetup-form');
+    if (meetupForm) {
+        meetupForm.addEventListener('submit', (e) => {
             e.preventDefault();
             handleMeetupSubmit();
-        }
-    });
+        });
+    }
 
     // Global Click Handler
     document.addEventListener('click', (e) => {
@@ -209,7 +230,6 @@ function handleAuthSubmit() {
         };
         showToast(`Account created! Welcome ${currentUser.fullName}`);
     } else {
-        // Sign In
         const displayName = nameInput || emailInput.split('@')[0];
         currentUser = {
             fullName: displayName.charAt(0).toUpperCase() + displayName.slice(1),
@@ -224,7 +244,6 @@ function handleAuthSubmit() {
     renderOffersList();
     closeModal('auth-modal');
 
-    // Reset Form
     document.getElementById('auth-form').reset();
 }
 
@@ -380,7 +399,6 @@ async function handleCreateListing() {
         timestamp: new Date().toISOString()
     };
 
-    // Save globally to Firebase database so all users receive it instantly
     if (isFirebaseConnected && db) {
         db.ref('items/' + newItem.id).set(newItem);
     } else {
