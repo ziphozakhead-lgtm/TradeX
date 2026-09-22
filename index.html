@@ -3,492 +3,365 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TradeX - Safe Peer-to-Peer Barter & Trade</title>
-    <link rel="stylesheet" href="styles.css">
+    <title>Barter & Trade Marketplace</title>
+    <style>
+        :root {
+            --primary-color: #2e7d32;
+            --primary-hover: #1b5e20;
+            --bg-color: #f4f6f8;
+            --card-bg: #ffffff;
+            --text-color: #333333;
+            --border-color: #e0e0e0;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            padding-bottom: 70px;
+        }
+
+        /* Header */
+        header {
+            background-color: var(--card-bg);
+            border-bottom: 1px solid var(--border-color);
+            padding: 16px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        header h1 {
+            font-size: 1.25rem;
+            color: var(--primary-color);
+        }
+
+        .auth-status button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .auth-status button:hover {
+            background-color: var(--primary-hover);
+        }
+
+        /* Container & Tabs */
+        .container {
+            max-width: 800px;
+            margin: 20px auto;
+            padding: 0 16px;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Controls / Search Bar */
+        .controls {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .controls input, .controls select {
+            padding: 10px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .controls input {
+            flex: 1;
+        }
+
+        /* Items Grid */
+        .items-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+            gap: 16px;
+        }
+
+        .item-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .card-image-wrapper {
+            position: relative;
+            width: 100%;
+            height: 180px;
+            background-color: #eee;
+        }
+
+        .card-image-wrapper img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .category-badge {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            text-transform: capitalize;
+        }
+
+        .card-content {
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            flex: 1;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .card-price {
+            color: var(--primary-color);
+            font-weight: bold;
+        }
+
+        .card-location {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 8px;
+        }
+
+        .card-description {
+            font-size: 13px;
+            color: #444;
+            margin-bottom: 12px;
+            flex: 1;
+        }
+
+        .card-wanted {
+            background: #f0f7f0;
+            padding: 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            margin-bottom: 12px;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #f0f0f0;
+            padding-top: 10px;
+        }
+
+        .btn-trade {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+
+        /* Post Form */
+        .form-card {
+            background: var(--card-bg);
+            padding: 24px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+        }
+
+        .form-card h2 {
+            margin-bottom: 16px;
+            color: var(--primary-color);
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .form-group input, 
+        .form-group select, 
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .btn-submit {
+            width: 100%;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        /* Bottom Navigation */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 60px;
+            background-color: var(--card-bg);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 1000;
+        }
+
+        .bottom-nav-btn {
+            background: none;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            cursor: pointer;
+            padding: 10px 20px;
+        }
+
+        .bottom-nav-btn.active {
+            color: var(--primary-color);
+            border-bottom: 2px solid var(--primary-color);
+        }
+    </style>
 </head>
 <body>
 
-    <!-- Toast Notification Container -->
-    <div id="toast-container" class="toast-container"></div>
-
-    <!-- AUTHENTICATION MODAL -->
-    <div id="auth-modal" class="modal-overlay" style="display: flex;">
-        <div class="modal-card auth-card">
-            <div class="auth-tabs">
-                <button type="button" id="tab-login-btn" class="auth-tab-btn active" onclick="switchAuthMode('login')">Log In</button>
-                <button type="button" id="tab-signup-btn" class="auth-tab-btn" onclick="switchAuthMode('signup')">Sign Up</button>
-            </div>
-
-            <!-- LOGIN FORM -->
-            <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
-                <h2 style="font-size:1.4rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">Welcome Back</h2>
-                <p class="subtitle">Log in to manage your trades and proposals.</p>
-                
-                <div class="form-group">
-                    <label for="login-email">Email Address *</label>
-                    <input type="email" id="login-email" required placeholder="e.g. alex@example.com">
-                </div>
-
-                <div class="form-group">
-                    <label for="login-password">Password *</label>
-                    <input type="password" id="login-password" required placeholder="Enter password">
-                </div>
-
-                <button type="submit" class="submit-btn">Log In to TradeX</button>
-            </form>
-
-            <!-- SIGN UP FORM -->
-            <form id="signup-form" class="auth-form" style="display:none;" onsubmit="handleSignUp(event)">
-                <h2 style="font-size:1.4rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">Create TradeX Account</h2>
-                <p class="subtitle">Sign up to manage your private barter trades securely.</p>
-
-                <div class="form-group">
-                    <label for="signup-name">Full Name / Display Name *</label>
-                    <input type="text" id="signup-name" required placeholder="e.g. Alex Taylor">
-                </div>
-
-                <div class="form-group">
-                    <label for="signup-email">Unique Email Address *</label>
-                    <input type="email" id="signup-email" required placeholder="e.g. alex@example.com">
-                </div>
-
-                <div class="form-group">
-                    <label for="signup-phone">Mobile Phone Number *</label>
-                    <input type="tel" id="signup-phone" required placeholder="e.g. +27 82 555 0199">
-                </div>
-
-                <div class="form-group">
-                    <label for="signup-address">Default Address *</label>
-                    <input type="text" id="signup-address" required placeholder="e.g. 123 Main Street, Cityville">
-                </div>
-
-                <div class="form-group">
-                    <label for="signup-password">Password *</label>
-                    <input type="password" id="signup-password" required minlength="4" placeholder="Choose password">
-                </div>
-
-                <button type="submit" class="submit-btn">Create Account</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- App Header -->
-    <header class="app-header">
-        <div class="logo-container">
-            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0071e3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M16 3l4 4-4 4"/>
-                <path d="M20 7H4"/>
-                <path d="M8 21l-4-4 4-4"/>
-                <path d="M4 17h16"/>
-            </svg>
-            <h1>TradeX</h1>
-        </div>
-        <div class="header-actions" style="display:flex; gap:0.5rem; align-items:center;">
-            <div id="user-chip" class="user-chip" style="display:none;" onclick="switchTab('profile-tab', document.querySelectorAll('.bottom-nav-btn')[4])">
-                <span id="user-chip-name">User</span>
-            </div>
-            <button id="location-btn" class="location-chip" onclick="requestUserLocation()">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"/><circle cx="12" cy="10" r="3"/></svg>
-                <span id="location-status">Enable GPS</span>
-            </button>
+    <!-- Header -->
+    <header>
+        <h1>TradeMarket</h1>
+        <div id="auth-status" class="auth-status">
+            <!-- Dynamically populated by JS -->
         </div>
     </header>
 
-    <!-- Main Viewports -->
-    <main class="app-main">
-        
-        <!-- EXPLORE TAB (HOME PAGE TIMELINE) -->
-        <section id="explore-tab" class="tab-content active">
-            <div class="filter-card">
-                <div class="search-bar">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                    <input type="text" id="search-input" placeholder="Search items, tags, sellers, locations..." oninput="applyFilters()">
-                </div>
-                
-                <div class="filter-grid">
-                    <select id="filter-category" onchange="applyFilters()">
-                        <option value="ALL">All Categories</option>
-                        <option value="Electronics">Electronics</option>
-                        <option value="Fashion">Fashion & Apparel</option>
-                        <option value="Home">Home & Garden</option>
-                        <option value="Vehicles">Vehicles & Parts</option>
-                        <option value="Gaming">Gaming & Hobbies</option>
-                    </select>
+    <!-- Main Container -->
+    <div class="container">
 
-                    <select id="filter-status" onchange="applyFilters()">
-                        <option value="ALL">All Listing Statuses</option>
-                        <option value="OPEN">Open for Offers</option>
-                        <option value="CLOSED">Trade Completed</option>
-                    </select>
-
-                    <select id="filter-radius" onchange="applyFilters()">
-                        <option value="ALL">Any Distance</option>
-                        <option value="5">Within 5 km</option>
-                        <option value="15">Within 15 km</option>
-                        <option value="50">Within 50 km</option>
-                    </select>
-
-                    <select id="sort-price" onchange="applyFilters()">
-                        <option value="NEWEST">Newest First</option>
-                        <option id="distance-sort-option" value="DISTANCE" disabled>Nearest to Me (GPS)</option>
-                        <option value="LOW_HIGH">Value: Low to High</option>
-                        <option value="HIGH_LOW">Value: High to Low</option>
-                    </select>
-                </div>
+        <!-- TAB 1: Explore Screen -->
+        <div id="explore-tab" class="tab-content active">
+            <div class="controls">
+                <input type="text" id="search-input" placeholder="Search items, locations..." />
+                <select id="category-filter">
+                    <option value="all">All Categories</option>
+                    <option value="clothing">Clothing</option>
+                    <option value="electronics">Electronics</option>
+                    <option value="general">General</option>
+                </select>
             </div>
 
-            <div id="item-grid" class="item-grid"></div>
-        </section>
+            <div id="items-grid" class="items-grid">
+                <!-- Dynamically rendered item cards -->
+            </div>
+        </div>
 
-        <!-- CREATE LISTING TAB -->
-        <section id="post-tab" class="tab-content">
+        <!-- TAB 2: Post Item Form -->
+        <div id="post-tab" class="tab-content">
             <div class="form-card">
-                <h2 style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">List Item for Trade</h2>
-                <p class="subtitle">Describe your item clearly and what you are looking to swap for.</p>
-
-                <form id="post-item-form" onsubmit="handleCreateListing(event)">
-                    <div class="form-group">
-                        <label for="seller-name">Your Display Name *</label>
-                        <input type="text" id="seller-name" required readonly style="background:#e5e5ea;">
-                    </div>
-
+                <h2>List an Item for Trade</h2>
+                <form id="post-item-form">
                     <div class="form-group">
                         <label for="item-title">Item Title *</label>
-                        <input type="text" id="item-title" required placeholder="e.g. Wireless Noise-Cancelling Headphones">
-                    </div>
-
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="item-category">Category *</label>
-                            <select id="item-category" required>
-                                <option value="Electronics">Electronics</option>
-                                <option value="Fashion">Fashion & Apparel</option>
-                                <option value="Home">Home & Garden</option>
-                                <option value="Vehicles">Vehicles & Parts</option>
-                                <option value="Gaming">Gaming & Hobbies</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="item-price">Estimated Value (R) *</label>
-                            <input type="number" id="item-price" required min="1" placeholder="e.g. 2500">
-                        </div>
+                        <input type="text" id="item-title" required placeholder="e.g. Vintage Camera">
                     </div>
 
                     <div class="form-group">
-                        <label for="item-location">Item Location / Address *</label>
-                        <input type="text" id="item-location" required placeholder="e.g. Downtown, Cityville">
+                        <label for="item-category">Category *</label>
+                        <select id="item-category" required>
+                            <option value="clothing">Clothing</option>
+                            <option value="electronics">Electronics</option>
+                            <option value="general" selected>General</option>
+                        </select>
                     </div>
 
                     <div class="form-group">
-                        <label for="item-image">Upload Photo *</label>
-                        <input type="file" id="item-image" accept="image/*" required>
+                        <label for="item-price">Estimated Value ($)</label>
+                        <input type="number" id="item-price" min="0" step="1" placeholder="0">
                     </div>
 
                     <div class="form-group">
-                        <label for="item-desc">Condition & Details *</label>
-                        <textarea id="item-desc" rows="3" required placeholder="Describe condition, age, flaws..."></textarea>
+                        <label for="item-location">Location *</label>
+                        <input type="text" id="item-location" required placeholder="e.g. Downtown Market">
                     </div>
 
                     <div class="form-group">
-                        <label for="item-wanted">What do you want in return? *</label>
-                        <input type="text" id="item-wanted" required placeholder="e.g. Mechanical Keyboard">
+                        <label for="item-image">Upload Photo</label>
+                        <input type="file" id="item-image" accept="image/*">
                     </div>
 
-                    <button type="submit" class="submit-btn">Publish Trade Listing</button>
+                    <div class="form-group">
+                        <label for="item-desc">Description *</label>
+                        <textarea id="item-desc" rows="3" required placeholder="Describe condition, details, etc."></textarea>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="item-wanted">What do you want in return?</label>
+                        <input type="text" id="item-wanted" placeholder="e.g. Looking for books or Bluetooth speaker">
+                    </div>
+
+                    <button type="submit" class="btn-submit">Publish Trade Listing</button>
                 </form>
             </div>
-        </section>
+        </div>
 
-        <!-- OFFERS TAB -->
-        <section id="offers-tab" class="tab-content">
-            <div class="tab-header" style="margin-bottom:1rem;">
-                <h2 style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">My Private Trade Proposals</h2>
-                <p class="subtitle">Review pending offers, chat with traders, and manage meeting points.</p>
-            </div>
-            <div id="offers-list" class="offers-container"></div>
-        </section>
-
-        <!-- SAFE ZONES TAB -->
-        <section id="safezones-tab" class="tab-content">
-            <div class="tab-header" style="margin-bottom:1rem;">
-                <h2 style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">Safe Exchange Zones</h2>
-                <p class="subtitle">Verified, public, high-security meetup locations in your city.</p>
-            </div>
-            
-            <div class="safe-zone-card">
-                <div class="safe-zone-badge">VERIFIED SAFE ZONE</div>
-                <h3 style="font-size:1.05rem; font-weight:600; color:#1d1d1f; margin-top:0.2rem;">Central Police Station - Forecourt Parking</h3>
-                <p style="font-size:0.88rem; color:#6e6e73; margin-top:0.2rem;">Public parking forecourt under 24/7 CCTV surveillance.</p>
-                <div class="safe-zone-info">
-                    <span>📍 100 Civic Center Plaza, Metro City</span>
-                </div>
-            </div>
-
-            <div class="safe-zone-card">
-                <div class="safe-zone-badge">VERIFIED SAFE ZONE</div>
-                <h3 style="font-size:1.05rem; font-weight:600; color:#1d1d1f; margin-top:0.2rem;">Grand Plaza Mall - Food Court Atrium</h3>
-                <p style="font-size:0.88rem; color:#6e6e73; margin-top:0.2rem;">High foot-traffic mall zone with security guards on duty.</p>
-                <div class="safe-zone-info">
-                    <span>📍 500 Main Boulevard, Metro City</span>
-                </div>
-            </div>
-        </section>
-
-        <!-- PROFILE TAB -->
-        <section id="profile-tab" class="tab-content">
-            <div class="form-card">
-                <h2 style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">User Trust Profile</h2>
-                <div class="trust-score-badge">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34c759" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-                    <div>
-                        <strong id="trust-rating-val" style="color:#1d1d1f;">4.9 / 5.0 Trust Score</strong>
-                        <div id="trust-details-val" style="font-size:0.78rem; color:#8e8e93;">Verified ID & Phone</div>
-                    </div>
-                </div>
-
-                <form id="profile-form" onsubmit="handleSaveProfile(event)">
-                    <div class="form-group">
-                        <label for="profile-full-name">Full Name *</label>
-                        <input type="text" id="profile-full-name" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label for="profile-email">Email Address *</label>
-                        <input type="email" id="profile-email" required readonly style="background:#e5e5ea;">
-                    </div>
-
-                    <button type="submit" class="submit-btn">Save Profile Settings</button>
-                    <button type="button" class="reset-btn" onclick="logoutUser()">Log Out Account</button>
-                </form>
-            </div>
-        </section>
-
-    </main>
+    </div>
 
     <!-- Bottom Navigation Bar -->
     <nav class="bottom-nav">
-        <button class="bottom-nav-btn active" onclick="switchTab('explore-tab', this)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/></svg>
-            <span>Explore</span>
-        </button>
-
-        <button class="bottom-nav-btn" onclick="switchTab('post-tab', this)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
-            <span>List Item</span>
-        </button>
-
-        <button class="bottom-nav-btn" onclick="switchTab('offers-tab', this)">
-            <div class="nav-badge-wrapper">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                <span id="offer-count" class="badge-count">0</span>
-            </div>
-            <span>Trades</span>
-        </button>
-
-        <button class="bottom-nav-btn" onclick="switchTab('safezones-tab', this)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-            <span>Safe Zones</span>
-        </button>
-
-        <button class="bottom-nav-btn" onclick="switchTab('profile-tab', this)">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            <span>Profile</span>
-        </button>
+        <button type="button" class="bottom-nav-btn active" data-tab="explore-tab">Explore</button>
+        <button type="button" class="bottom-nav-btn" data-tab="post-tab">List Item</button>
     </nav>
 
-    <!-- MODAL 1: ITEM DETAIL MODAL -->
-    <div id="detail-modal" class="modal-overlay">
-        <div class="modal-card">
-            <button class="close-modal-btn" onclick="closeDetailModal()">&times;</button>
-            <div id="detail-modal-body"></div>
-        </div>
-    </div>
-
-    <!-- MODAL 2: OFFER PROPOSAL MODAL -->
-    <div id="trade-modal" class="modal-overlay">
-        <div class="modal-card">
-            <button class="close-modal-btn" onclick="closeTradeModal()">&times;</button>
-            <h2 id="modal-item-title" style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em; margin-bottom:1rem;">Propose Trade Offer</h2>
-            <form id="trade-offer-form" onsubmit="handleSendTradeProposal(event)">
-                <input type="hidden" id="target-item-id">
-                
-                <div class="form-group">
-                    <label for="offered-by-name">Your Name *</label>
-                    <input type="text" id="offered-by-name" required readonly style="background:#e5e5ea;">
-                </div>
-
-                <div class="form-group">
-                    <label for="offered-item">Item You Are Offering *</label>
-                    <input type="text" id="offered-item" required placeholder="e.g. iPad Air 64GB">
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="offered-price">Estimated Value (R) *</label>
-                        <input type="number" id="offered-price" required min="1" placeholder="e.g. 3000">
-                    </div>
-                    <div class="form-group">
-                        <label for="offered-cash">Optional Cash Top-Up (R)</label>
-                        <input type="number" id="offered-cash" min="0" placeholder="e.g. 500">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="offered-image">Photo of Offered Item *</label>
-                    <input type="file" id="offered-image" accept="image/*" required>
-                </div>
-
-                <div class="form-group">
-                    <label for="offer-desc">Condition Description *</label>
-                    <textarea id="offer-desc" rows="2" required placeholder="Describe condition, inclusions..."></textarea>
-                </div>
-
-                <button type="submit" class="submit-btn">Send Proposal</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL 3: SET MEETING POINT & ACCEPT TRADE -->
-    <div id="acceptance-modal" class="modal-overlay">
-        <div class="modal-card">
-            <button class="close-modal-btn" onclick="closeAcceptanceModal()">&times;</button>
-            <h2 style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">Set Meeting Point & Accept Trade</h2>
-            <p class="subtitle">Specify meeting parameters to finalize agreement.</p>
-
-            <form id="acceptance-form" onsubmit="submitAcceptanceWithMeeting(event)">
-                <input type="hidden" id="accepting-offer-id">
-
-                <div class="form-group">
-                    <label for="accept-location-input">Location Selection *</label>
-                    <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
-                        <input type="text" id="accept-location-input" required placeholder="Search address or location..." oninput="validateAcceptanceForm()">
-                        <button type="button" class="secondary-btn" style="flex:0 0 auto;" onclick="usePresetSafeZone()">Safe Zone Dropdown</button>
-                    </div>
-
-                    <div class="map-container" id="accept-map-container" onclick="handleMapPinDrop(event)">
-                        <div class="map-grid-overlay"></div>
-                        <div class="map-pin" id="map-pin" style="top: 40%; left: 50%;">📍</div>
-                        <div class="map-coordinates-bar" id="map-coords-text">Lat: 40.7128, Lng: -74.0060 (Click map to adjust pin)</div>
-                    </div>
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="accept-date">Meeting Date *</label>
-                        <input type="date" id="accept-date" required onchange="validateAcceptanceForm()">
-                    </div>
-                    <div class="form-group">
-                        <label for="accept-time">Time Window / Hour *</label>
-                        <input type="time" id="accept-time" required onchange="validateAcceptanceForm()">
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="accept-instructions">Additional Instructions (Optional)</label>
-                    <textarea id="accept-instructions" rows="2" placeholder="e.g. Meet near the main entrance next to security booth"></textarea>
-                </div>
-
-                <div class="form-row" style="margin-top:1rem;">
-                    <button type="button" class="secondary-btn" onclick="closeAcceptanceModal()">Cancel</button>
-                    <button type="submit" id="confirm-accept-btn" class="submit-btn" disabled style="background:#34c759;">Confirm & Accept Trade</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL 4: PROPOSE NEW LOCATION -->
-    <div id="propose-location-modal" class="modal-overlay">
-        <div class="modal-card">
-            <button class="close-modal-btn" onclick="closeProposeLocationModal()">&times;</button>
-            <h2 style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">Propose New Location / Time</h2>
-            <p class="subtitle">Adjust parameters without reverting trade status to Pending.</p>
-
-            <form id="propose-location-form" onsubmit="submitLocationAdjustment(event)">
-                <input type="hidden" id="adjust-offer-id">
-
-                <div class="form-group">
-                    <label for="adjust-location">New Location Address *</label>
-                    <input type="text" id="adjust-location" required placeholder="Enter revised address...">
-                </div>
-
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="adjust-date">New Date *</label>
-                        <input type="date" id="adjust-date" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="adjust-time">New Time *</label>
-                        <input type="time" id="adjust-time" required>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="adjust-notes">Reason / Notes</label>
-                    <textarea id="adjust-notes" rows="2" placeholder="Reason for adjusting meeting point..."></textarea>
-                </div>
-
-                <button type="submit" class="submit-btn">Submit Proposed Location Adjustment</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL 5: PIN HANDOVER VERIFICATION -->
-    <div id="otp-modal" class="modal-overlay">
-        <div class="modal-card">
-            <button class="close-modal-btn" onclick="closeOtpModal()">&times;</button>
-            <h2 style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">In-Person Handover Verification</h2>
-            <p class="subtitle">Inspect both items physically before exchanging codes.</p>
-
-            <div class="otp-display-box">
-                <div class="otp-role-label">Your Unique Release PIN</div>
-                <div class="otp-code" id="my-otp-display">----</div>
-                <p style="font-size:0.75rem; color:#8e8e93; margin-top:0.25rem;">Hand this PIN to trader AFTER inspecting item.</p>
-            </div>
-
-            <hr style="margin:1.25rem 0; border:0; border-top:1px solid #e5e5ea;">
-
-            <form id="otp-verification-form" onsubmit="submitHandoverPin(event)">
-                <input type="hidden" id="otp-offer-id">
-                <div class="form-group">
-                    <label for="received-pin-input">Enter PIN Provided by Other Trader *</label>
-                    <input type="text" id="received-pin-input" required maxlength="4" placeholder="e.g. 4821" style="font-size:1.5rem; text-align:center; letter-spacing:0.3rem;">
-                </div>
-
-                <button type="submit" class="submit-btn" style="background:#0071e3; margin-top:1rem;">Verify PIN & Complete Trade</button>
-            </form>
-        </div>
-    </div>
-
-    <!-- MODAL 6: LIVE CHAT MODAL -->
-    <div id="chat-modal" class="modal-overlay">
-        <div class="modal-card chat-modal-card">
-            <button class="close-modal-btn" onclick="closeChatModal()">&times;</button>
-            
-            <div class="chat-header">
-                <h3 id="chat-recipient-name">Trader Chat</h3>
-                <span id="chat-item-context" class="chat-subtitle">Context: Trade Discussion</span>
-            </div>
-
-            <div id="chat-messages-container" class="chat-messages-container">
-                <!-- Chat messages will be dynamically injected here -->
-            </div>
-
-            <form id="chat-send-form" class="chat-input-row" onsubmit="handleSendChatMessage(event)">
-                <input type="text" id="chat-input-text" placeholder="Type a message..." autocomplete="off" required>
-                <button type="submit" class="chat-send-btn">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-                        <line x1="22" y1="2" x2="11" y2="13"></line>
-                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                    </svg>
-                </button>
-            </form>
-        </div>
-    </div>
-
-    <!-- Firebase SDK Imports -->
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+    <!-- Script File Linking -->
     <script src="app.js"></script>
 </body>
 </html>
