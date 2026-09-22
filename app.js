@@ -1,71 +1,65 @@
-// Initial Mock Listings with Location Addresses and Geolocation Coordinates
-const defaultItems = [
-    {
-        id: "1",
-        title: "Wireless Noise Cancelling Headphones",
-        category: "Electronics",
-        price: 250,
-        image: "https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=500",
-        description: "Great condition, minor scratches. Battery lasts 30h.",
-        wanted: "Mechanical Keyboard",
-        sellerName: "Sam R.",
-        sellerEmail: "sam@example.com",
-        location: "Downtown, Metro City",
-        lat: 40.7128,
-        lng: -74.0060,
-        status: "OPEN",
-        timestamp: new Date(Date.now() - 86400000).toISOString()
-    },
-    {
-        id: "2",
-        title: "DSLR Camera Kit",
-        category: "Electronics",
-        price: 500,
-        image: "https://images.unsplash.com/photo-1516035069371-29a1b244cc32?w=500",
-        description: "Includes 18-55mm lens. Shutter count under 2000.",
-        wanted: "Tablet / iPad",
-        sellerName: "Alex M.",
-        sellerEmail: "alex@example.com",
-        location: "Westside, Metro City",
-        lat: 40.7306,
-        lng: -73.9352,
-        status: "OPEN",
-        timestamp: new Date(Date.now() - 3600000 * 3).toISOString()
-    }
-];
+// --- FIREBASE INITIALIZATION ---
+const firebaseConfig = {
+    apiKey: "AIzaSyDemoKeyForTradeXApp1234567890",
+    authDomain: "tradex-app-demo.firebaseapp.com",
+    databaseURL: "https://tradex-app-demo-default-rtdb.firebaseio.com",
+    projectId: "tradex-app-demo",
+    storageBucket: "tradex-app-demo.appspot.com",
+    messagingSenderId: "123456789012",
+    appId: "1:123456789012:web:abcdef1234567890"
+};
 
-// Application State
-let accounts = JSON.parse(localStorage.getItem('tradex_accounts')) || [
-    {
-        fullName: "Jordan Miller",
-        email: "jordan@example.com",
-        phone: "+1 555 0123",
-        address: "123 Main Street, Metro City",
-        password: "123",
-        rating: 4.9,
-        tradesCompleted: 12
-    }
-];
+// Initialize Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 
+// Firebase References
+const itemsRef = db.ref('items');
+const offersRef = db.ref('offers');
+const chatsRef = db.ref('chats');
+const accountsRef = db.ref('accounts');
+
+// Application Global State
 let currentUser = JSON.parse(localStorage.getItem('tradex_current_user')) || null;
-let items = JSON.parse(localStorage.getItem('tradex_items')) || defaultItems;
-let offers = JSON.parse(localStorage.getItem('tradex_offers')) || [];
-let userLocation = null; // Store user GPS coordinates { lat, lng }
+let items = [];
+let offers = [];
+let chats = {};
+let activeChatId = null;
+
+let userLocation = null;
 let selectedPinCoords = { lat: 40.7128, lng: -74.0060 };
 
-function saveData() {
-    localStorage.setItem('tradex_accounts', JSON.stringify(accounts));
-    if (currentUser) {
-        localStorage.setItem('tradex_current_user', JSON.stringify(currentUser));
+// Real-time synchronization listeners across all clients
+itemsRef.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+        items = Object.keys(data).map(key => ({ id: key, ...data[key] }));
     } else {
-        localStorage.removeItem('tradex_current_user');
+        items = [];
     }
-    localStorage.setItem('tradex_items', JSON.stringify(items));
-    localStorage.setItem('tradex_offers', JSON.stringify(offers));
-    updateOfferCount();
-}
+    applyFilters();
+});
 
-// Utility to read uploaded image files as Base64 Data URL
+offersRef.on('value', (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+        offers = Object.keys(data).map(key => ({ id: key, ...data[key] }));
+    } else {
+        offers = [];
+    }
+    renderOffers();
+    updateOfferCount();
+});
+
+chatsRef.on('value', (snapshot) => {
+    const data = snapshot.val();
+    chats = data || {};
+    if (activeChatId) {
+        renderChatMessages();
+    }
+});
+
+// Utility to convert image uploads to Data URLs
 function readFileAsDataURL(file) {
     return new Promise((resolve, reject) => {
         if (!file) {
@@ -79,9 +73,9 @@ function readFileAsDataURL(file) {
     });
 }
 
-// Haversine formula to compute distance between two GPS coordinates in kilometers
+// Haversine formula to calculate distance between GPS points
 function calculateDistanceKm(lat1, lon1, lat2, lon2) {
-    const R = 6371; // Radius of the Earth in km
+    const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLon = (lon2 - lon1) * Math.PI / 180;
     const a = 
@@ -92,7 +86,6 @@ function calculateDistanceKm(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
-// Location Request
 function requestUserLocation() {
     if (!navigator.geolocation) {
         return showErrorToast("Geolocation is not supported by your browser.");
@@ -111,7 +104,6 @@ function requestUserLocation() {
             document.getElementById('location-btn').classList.add('active');
             locStatus.innerText = "GPS Active";
             
-            // Enable Distance Sort Option
             const distOpt = document.getElementById('distance-sort-option');
             if (distOpt) distOpt.disabled = false;
 
@@ -120,7 +112,7 @@ function requestUserLocation() {
         },
         (error) => {
             locStatus.innerText = "Enable GPS";
-            showErrorToast("Unable to retrieve location. Please check browser permissions.");
+            showErrorToast("Unable to retrieve location.");
         }
     );
 }
@@ -138,41 +130,54 @@ function handleLogin(e) {
     const email = document.getElementById('login-email').value.trim().toLowerCase();
     const password = document.getElementById('login-password').value;
 
-    const account = accounts.find(a => a.email.toLowerCase() === email && a.password === password);
-    if (!account) return showErrorToast("Invalid credentials!");
+    accountsRef.once('value', (snapshot) => {
+        const accounts = snapshot.val() || {};
+        const foundKey = Object.keys(accounts).find(k => accounts[k].email.toLowerCase() === email && accounts[k].password === password);
 
-    currentUser = account;
-    saveData();
-    document.getElementById('auth-modal').style.display = 'none';
-    showSuccessToast(`Welcome back, ${currentUser.fullName}!`);
-    initUserSession();
+        if (!foundKey) {
+            showErrorToast("Invalid email or password!");
+            return;
+        }
+
+        currentUser = accounts[foundKey];
+        localStorage.setItem('tradex_current_user', JSON.stringify(currentUser));
+        document.getElementById('auth-modal').style.display = 'none';
+        showSuccessToast(`Welcome back, ${currentUser.fullName}!`);
+        initUserSession();
+    });
 }
 
 function handleSignUp(e) {
     e.preventDefault();
     const email = document.getElementById('signup-email').value.trim().toLowerCase();
-    
-    // Ensure every user has a unique email address
-    if (accounts.some(a => a.email.toLowerCase() === email)) {
-        return showErrorToast("An account with this email address already exists! Please use a unique email.");
-    }
 
-    const newAccount = {
-        fullName: document.getElementById('signup-name').value.trim(),
-        email: email,
-        phone: document.getElementById('signup-phone').value.trim(),
-        address: document.getElementById('signup-address').value.trim(),
-        password: document.getElementById('signup-password').value,
-        rating: 5.0,
-        tradesCompleted: 0
-    };
+    accountsRef.once('value', (snapshot) => {
+        const accounts = snapshot.val() || {};
+        const exists = Object.keys(accounts).some(k => accounts[k].email.toLowerCase() === email);
 
-    accounts.push(newAccount);
-    currentUser = newAccount;
-    saveData();
-    document.getElementById('auth-modal').style.display = 'none';
-    showSuccessToast("Account created successfully!");
-    initUserSession();
+        if (exists) {
+            return showErrorToast("An account with this email address already exists!");
+        }
+
+        const newAccount = {
+            fullName: document.getElementById('signup-name').value.trim(),
+            email: email,
+            phone: document.getElementById('signup-phone').value.trim(),
+            address: document.getElementById('signup-address').value.trim(),
+            password: document.getElementById('signup-password').value,
+            rating: 5.0,
+            tradesCompleted: 0
+        };
+
+        const newAccRef = accountsRef.push();
+        newAccRef.set(newAccount);
+
+        currentUser = newAccount;
+        localStorage.setItem('tradex_current_user', JSON.stringify(currentUser));
+        document.getElementById('auth-modal').style.display = 'none';
+        showSuccessToast("Account created successfully!");
+        initUserSession();
+    });
 }
 
 function logoutUser() {
@@ -227,7 +232,7 @@ function generateHandoverPin() {
     return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
-// Tab Switching
+// Navigation Tabs
 function switchTab(tabId, btnElement) {
     if (!currentUser) return checkAuthStatus();
 
@@ -242,7 +247,7 @@ function switchTab(tabId, btnElement) {
     if (tabId === 'profile-tab') loadProfileForm();
 }
 
-// Filtering & Radius Calculation
+// Timeline Filter & Sorting
 function applyFilters() {
     const searchVal = document.getElementById('search-input').value.toLowerCase();
     const categoryVal = document.getElementById('filter-category').value;
@@ -251,13 +256,12 @@ function applyFilters() {
     const sortVal = document.getElementById('sort-price').value;
 
     let filtered = items.filter(item => {
-        const matchesSearch = item.title.toLowerCase().includes(searchVal) || 
-                              item.sellerName.toLowerCase().includes(searchVal) ||
+        const matchesSearch = (item.title && item.title.toLowerCase().includes(searchVal)) || 
+                              (item.sellerName && item.sellerName.toLowerCase().includes(searchVal)) ||
                               (item.location && item.location.toLowerCase().includes(searchVal));
         const matchesCategory = categoryVal === 'ALL' || item.category === categoryVal;
         const matchesStatus = statusVal === 'ALL' || item.status === statusVal;
 
-        // Proximity Filtering
         let matchesRadius = true;
         if (radiusVal !== 'ALL' && userLocation && item.lat && item.lng) {
             const dist = calculateDistanceKm(userLocation.lat, userLocation.lng, item.lat, item.lng);
@@ -267,7 +271,6 @@ function applyFilters() {
         return matchesSearch && matchesCategory && matchesStatus && matchesRadius;
     });
 
-    // Sorting logic
     if (sortVal === 'DISTANCE' && userLocation) {
         filtered.sort((a, b) => {
             const distA = (a.lat && a.lng) ? calculateDistanceKm(userLocation.lat, userLocation.lng, a.lat, a.lng) : Infinity;
@@ -285,13 +288,14 @@ function applyFilters() {
     renderItems(filtered);
 }
 
-// Render Item Grid on Home Page
+// Render Timeline Item Grid
 function renderItems(itemsToRender = items) {
     const grid = document.getElementById('item-grid');
+    if (!grid) return;
     grid.innerHTML = '';
 
     if (itemsToRender.length === 0) {
-        grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; padding: 2rem; color:#64748b;">No listings found matching your criteria.</p>';
+        grid.innerHTML = '<p style="grid-column: 1/-1; text-align:center; padding: 3rem 1rem; color:#8e8e93; font-size:0.9rem;">No listings found matching your criteria.</p>';
         return;
     }
 
@@ -300,7 +304,6 @@ function renderItems(itemsToRender = items) {
         card.className = 'card';
         const isMyItem = currentUser && item.sellerEmail === currentUser.email;
 
-        // Calculate distance if GPS is available
         let distanceText = '';
         if (userLocation && item.lat && item.lng) {
             const km = calculateDistanceKm(userLocation.lat, userLocation.lng, item.lat, item.lng);
@@ -311,17 +314,17 @@ function renderItems(itemsToRender = items) {
             <img src="${item.image}" alt="${item.title}" onclick="openDetailModal('${item.id}')">
             <div class="card-body">
                 <span class="badge">${item.category}</span>
-                <div class="price-tag">Est. Value: $${item.price}</div>
+                <div class="price-tag">Est. Value: R${parseFloat(item.price).toLocaleString()}</div>
                 <h3 class="card-title">${item.title}</h3>
                 
-                <!-- Location Badge -->
                 <div class="location-tag">
                     📍 ${item.location || 'Metro Area'}${distanceText}
                 </div>
 
-                <p style="font-size:0.8rem; color:#64748b;">Seller: ${item.sellerName}</p>
+                <p style="font-size:0.8rem; color:#8e8e93;">Seller: ${item.sellerName}</p>
                 <div class="card-actions">
                     <button class="secondary-btn" onclick="openDetailModal('${item.id}')">Details</button>
+                    ${!isMyItem ? `<button class="secondary-btn" style="padding:0.65rem 0.5rem;" onclick="openDirectItemChat('${item.id}')">💬 Chat</button>` : ''}
                     ${!isMyItem && item.status === 'OPEN' ? `<button class="primary-btn" onclick="openTradeModal('${item.id}')">Offer Trade</button>` : ''}
                 </div>
             </div>
@@ -340,15 +343,24 @@ function openDetailModal(itemId) {
         distanceText = `<p><strong>Distance:</strong> ${km.toFixed(2)} km away</p>`;
     }
 
+    const isMyItem = currentUser && item.sellerEmail === currentUser.email;
+
     document.getElementById('detail-modal-body').innerHTML = `
-        <h2>${item.title}</h2>
-        <img src="${item.image}" style="width:100%; height:200px; object-fit:cover; border-radius:8px; margin:1rem 0;">
+        <h2 style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">${item.title}</h2>
+        <img src="${item.image}" style="width:100%; height:220px; object-fit:cover; border-radius:16px; margin:1rem 0;">
         <p><strong>Category:</strong> ${item.category}</p>
-        <p><strong>Value:</strong> $${item.price}</p>
+        <p><strong>Value:</strong> R${parseFloat(item.price).toLocaleString()}</p>
         <p><strong>Location:</strong> 📍 ${item.location || 'Not Specified'}</p>
         ${distanceText}
         <p><strong>Seller:</strong> ${item.sellerName}</p>
-        <p style="margin-top:0.5rem; color:#475569;">${item.description}</p>
+        <p style="margin-top:0.75rem; color:#6e6e73; font-size:0.9rem; line-height:1.4;">${item.description}</p>
+        
+        ${!isMyItem ? `
+            <div style="margin-top:1.25rem; display:flex; gap:0.5rem;">
+                <button class="secondary-btn" onclick="closeDetailModal(); openDirectItemChat('${item.id}');">💬 Message Seller</button>
+                <button class="primary-btn" onclick="closeDetailModal(); openTradeModal('${item.id}');">Propose Trade</button>
+            </div>
+        ` : ''}
     `;
     document.getElementById('detail-modal').style.display = 'flex';
 }
@@ -357,14 +369,14 @@ function closeDetailModal() {
     document.getElementById('detail-modal').style.display = 'none';
 }
 
-// Create Listing & Ensure it appears on Everyone's Home Page
+// --- CREATE REAL-TIME LISTING (EVERYONE'S TIMELINE) ---
 document.getElementById('post-item-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     if (!currentUser) return checkAuthStatus();
 
     const locationVal = document.getElementById('item-location').value.trim();
     const imageInput = document.getElementById('item-image');
-    let imageUrl = "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500"; // Fallback image
+    let imageUrl = "https://images.unsplash.com/photo-1526170375885-4d8ecf77b99f?w=500";
 
     if (imageInput && imageInput.files && imageInput.files[0]) {
         try {
@@ -374,28 +386,33 @@ document.getElementById('post-item-form').addEventListener('submit', async funct
         }
     }
 
+    const newItemRef = itemsRef.push();
     const newItem = {
-        id: Date.now().toString(),
         sellerName: currentUser.fullName,
         sellerEmail: currentUser.email,
-        title: document.getElementById('item-title').value,
+        title: document.getElementById('item-title').value.trim(),
         category: document.getElementById('item-category').value,
         price: parseFloat(document.getElementById('item-price').value),
         location: locationVal,
         lat: userLocation ? userLocation.lat : 40.7128,
         lng: userLocation ? userLocation.lng : -74.0060,
         image: imageUrl,
-        description: document.getElementById('item-desc').value,
-        wanted: document.getElementById('item-wanted').value,
+        description: document.getElementById('item-desc').value.trim(),
+        wanted: document.getElementById('item-wanted').value.trim(),
         status: "OPEN",
         timestamp: new Date().toISOString()
     };
 
-    items.unshift(newItem);
-    saveData();
-    this.reset();
-    showSuccessToast("Listing published! It is now visible on the Home Page.");
-    switchTab('explore-tab', document.querySelectorAll('.bottom-nav-btn')[0]);
+    // Save to Firebase (Realtime sync pushes this to everyone's timeline)
+    newItemRef.set(newItem, (err) => {
+        if (err) {
+            showErrorToast("Failed to upload item. Try again.");
+        } else {
+            this.reset();
+            showSuccessToast("Listing published! It is now visible on everyone's timeline.");
+            switchTab('explore-tab', document.querySelectorAll('.bottom-nav-btn')[0]);
+        }
+    });
 });
 
 // Proposal Modal
@@ -418,18 +435,18 @@ document.getElementById('trade-offer-form').addEventListener('submit', async fun
     const targetItem = items.find(i => i.id === targetId);
 
     const imageInput = document.getElementById('offered-image');
-    let offeredImageUrl = "https://images.unsplash.com/photo-1544816155-12df9643f363?w=500"; // Fallback image
+    let offeredImageUrl = "https://images.unsplash.com/photo-1544816155-12df9643f363?w=500";
 
     if (imageInput && imageInput.files && imageInput.files[0]) {
         try {
             offeredImageUrl = await readFileAsDataURL(imageInput.files[0]);
         } catch (err) {
-            console.error("Trade offer image processing error:", err);
+            console.error("Trade offer image error:", err);
         }
     }
 
+    const newOfferRef = offersRef.push();
     const newOffer = {
-        id: Date.now().toString(),
         targetItemId: targetId,
         targetTitle: targetItem.title,
         targetPrice: targetItem.price,
@@ -443,13 +460,11 @@ document.getElementById('trade-offer-form').addEventListener('submit', async fun
         offeredImage: offeredImageUrl,
         offeredDesc: document.getElementById('offer-desc').value,
         cashTopUp: parseFloat(document.getElementById('offered-cash').value) || 0,
-        
         meetingLocation: "",
         meetingDate: "",
         meetingTime: "",
         additionalInstructions: "",
         meetingCoordinates: null,
-        
         meetingConfirmedBySeller: false,
         meetingConfirmedByBuyer: false,
         sellerPin: generateHandoverPin(),
@@ -458,11 +473,12 @@ document.getElementById('trade-offer-form').addEventListener('submit', async fun
         date: new Date().toLocaleDateString()
     };
 
-    offers.unshift(newOffer);
-    saveData();
-    closeTradeModal();
-    showSuccessToast("Trade proposal submitted!");
-    renderOffers();
+    newOfferRef.set(newOffer, (err) => {
+        if (!err) {
+            closeTradeModal();
+            showSuccessToast("Trade proposal submitted!");
+        }
+    });
 });
 
 // Render Offers List
@@ -472,14 +488,14 @@ function renderOffers() {
     list.innerHTML = '';
 
     if (!currentUser) {
-        list.innerHTML = '<p style="text-align:center; padding:2rem; color:#64748b;">Please log in to view trades.</p>';
+        list.innerHTML = '<p style="text-align:center; padding:3rem 1rem; color:#8e8e93;">Please log in to view trades.</p>';
         return;
     }
 
     const myOffers = offers.filter(o => o.offeredByEmail === currentUser.email || o.sellerEmail === currentUser.email);
 
     if (myOffers.length === 0) {
-        list.innerHTML = '<p style="text-align:center; padding:2rem; color:#64748b;">No active trade proposals.</p>';
+        list.innerHTML = '<p style="text-align:center; padding:3rem 1rem; color:#8e8e93;">No active trade proposals.</p>';
         return;
     }
 
@@ -490,6 +506,7 @@ function renderOffers() {
         const isReceivingParty = offer.sellerEmail === currentUser.email;
         const isAccepted = offer.status === 'Accepted';
         const isCompleted = offer.status === 'Completed' || offer.status === 'Cancelled';
+        const partnerName = isReceivingParty ? offer.offeredByName : offer.sellerName;
 
         let meetingCardContent = '';
 
@@ -498,8 +515,8 @@ function renderOffers() {
                 <div class="pre-acceptance-locked-box">
                     <span>🔒</span>
                     <div>
-                        <strong>Meeting Details Read-Only Prior to Acceptance</strong>
-                        <div>Parameters will be specified during acceptance.</div>
+                        <strong style="color:#1d1d1f;">Meeting Details Locked</strong>
+                        <div>Parameters will be specified upon acceptance.</div>
                     </div>
                 </div>
             `;
@@ -512,7 +529,7 @@ function renderOffers() {
             meetingCardContent = `
                 <div class="meeting-details-card">
                     <div class="meeting-card-header">
-                        <strong style="font-size:0.88rem; color:#0f172a;">📍 Meeting Details Card</strong>
+                        <strong style="font-size:0.88rem; color:#1d1d1f;">📍 Meeting Details Card</strong>
                         ${statusBadge}
                     </div>
                     
@@ -524,15 +541,15 @@ function renderOffers() {
                     </div>
                     ${offer.additionalInstructions ? `<div class="meeting-info-row"><strong>Instructions:</strong> ${offer.additionalInstructions}</div>` : ''}
 
-                    <div class="map-container" style="height:100px; margin-top:0.5rem; cursor:default;">
+                    <div class="map-container" style="height:100px; margin-top:0.6rem; cursor:default;">
                         <div class="map-grid-overlay"></div>
                         <div class="map-pin" style="top: 45%; left: 50%;">📍</div>
                         <div class="map-coordinates-bar">Confirmed Swap Coordinates</div>
                     </div>
 
-                    <div style="display:flex; gap:0.5rem; margin-top:0.6rem;">
-                        <button class="secondary-btn" style="font-size:0.75rem;" onclick="openDirections('${offer.meetingLocation}')">🗺️ Directions</button>
-                        ${!isCompleted ? `<button class="secondary-btn" style="font-size:0.75rem;" onclick="openProposeLocationModal('${offer.id}')">Propose New Location</button>` : ''}
+                    <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
+                        <button class="secondary-btn" style="font-size:0.78rem;" onclick="openDirections('${offer.meetingLocation}')">🗺️ Directions</button>
+                        ${!isCompleted ? `<button class="secondary-btn" style="font-size:0.78rem;" onclick="openProposeLocationModal('${offer.id}')">Propose New Location</button>` : ''}
                     </div>
                 </div>
             `;
@@ -542,43 +559,57 @@ function renderOffers() {
         if (offer.status === 'Pending') {
             if (isReceivingParty) {
                 actionButtonsHtml = `
-                    <button class="accept-btn" style="width:100%;" onclick="openAcceptanceModal('${offer.id}')">Accept Trade</button>
+                    <div style="display:flex; gap:0.5rem; width:100%;">
+                        <button class="accept-btn" style="flex:2;" onclick="openAcceptanceModal('${offer.id}')">Accept Trade</button>
+                        <button class="secondary-btn" style="flex:1;" onclick="openTradeOfferChat('${offer.id}')">💬 Chat</button>
+                    </div>
                 `;
             } else {
-                actionButtonsHtml = `<div style="font-size:0.8rem; color:#b45309;">Awaiting receiving party response...</div>`;
+                actionButtonsHtml = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="font-size:0.82rem; color:#b26200; font-weight:500;">Awaiting receiving party response...</div>
+                        <button class="secondary-btn" style="padding:0.4rem 0.85rem; font-size:0.8rem;" onclick="openTradeOfferChat('${offer.id}')">💬 Chat Trader</button>
+                    </div>
+                `;
             }
         } else if (offer.status === 'Accepted') {
             actionButtonsHtml = `
-                <button class="primary-btn" style="background:#16a34a;" onclick="openOtpModal('${offer.id}')">Execute Handover PIN Verification</button>
+                <div style="display:flex; gap:0.5rem; flex-direction:column;">
+                    <button class="primary-btn" style="background:#34c759;" onclick="openOtpModal('${offer.id}')">Execute Handover PIN Verification</button>
+                    <button class="secondary-btn" onclick="openTradeOfferChat('${offer.id}')">💬 Open Chat with ${partnerName}</button>
+                </div>
             `;
         } else {
             actionButtonsHtml = `
-                <div style="font-size:0.8rem; color:#64748b; font-weight:600;">Trade ${offer.status} (Parameters Read-Only)</div>
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <div style="font-size:0.82rem; color:#8e8e93; font-weight:600;">Trade ${offer.status}</div>
+                    <button class="secondary-btn" style="padding:0.4rem 0.85rem; font-size:0.8rem;" onclick="openTradeOfferChat('${offer.id}')">💬 Chat History</button>
+                </div>
             `;
         }
 
         card.innerHTML = `
             <div style="display:flex; justify-content:space-between; align-items:center;">
-                <h3>Trade: ${offer.sellerName} & ${offer.offeredByName}</h3>
+                <h3 style="font-size:1.05rem; font-weight:600; color:#1d1d1f;">Trade: ${offer.sellerName} & ${offer.offeredByName}</h3>
                 <span class="badge">${offer.status}</span>
             </div>
 
             <div class="offer-grid-preview">
                 <div class="offer-preview-box">
-                    <strong>${offer.targetTitle}</strong>
+                    <strong style="font-size:0.85rem; color:#1d1d1f;">${offer.targetTitle}</strong>
                     <img src="${offer.targetImage}">
-                    <span>Value: $${offer.targetPrice}</span>
+                    <span style="font-size:0.8rem; color:#6e6e73;">Value: R${parseFloat(offer.targetPrice).toLocaleString()}</span>
                 </div>
                 <div class="offer-preview-box">
-                    <strong>${offer.offeredItem}</strong>
+                    <strong style="font-size:0.85rem; color:#1d1d1f;">${offer.offeredItem}</strong>
                     <img src="${offer.offeredImage}">
-                    <span>Value: $${offer.offeredPrice}</span>
+                    <span style="font-size:0.8rem; color:#6e6e73;">Value: R${parseFloat(offer.offeredPrice).toLocaleString()}</span>
                 </div>
             </div>
 
             ${meetingCardContent}
 
-            <div style="margin-top:0.75rem;">
+            <div style="margin-top:0.85rem;">
                 ${actionButtonsHtml}
             </div>
         `;
@@ -587,7 +618,112 @@ function renderOffers() {
     });
 }
 
-// Acceptance Modal Handling
+// Live Chat Functions
+function openDirectItemChat(itemId) {
+    if (!currentUser) return checkAuthStatus();
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+
+    const safeEmailKey = currentUser.email.replace(/[.#$\[\]]/g, "_");
+    const chatId = `item_${item.id}_${safeEmailKey}`;
+    activeChatId = chatId;
+
+    document.getElementById('chat-recipient-name').innerText = `Chat with ${item.sellerName}`;
+    document.getElementById('chat-item-context').innerText = `Item: ${item.title}`;
+
+    if (!chats[chatId]) {
+        chatsRef.child(chatId).push({
+            senderEmail: "system",
+            senderName: "System",
+            text: `Discussion started for item "${item.title}". Ask questions or negotiate barter options.`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+    }
+
+    renderChatMessages();
+    document.getElementById('chat-modal').style.display = 'flex';
+}
+
+function openTradeOfferChat(offerId) {
+    if (!currentUser) return checkAuthStatus();
+    const offer = offers.find(o => o.id === offerId);
+    if (!offer) return;
+
+    const isSeller = currentUser.email === offer.sellerEmail;
+    const recipientName = isSeller ? offer.offeredByName : offer.sellerName;
+
+    const chatId = `trade_${offer.id}`;
+    activeChatId = chatId;
+
+    document.getElementById('chat-recipient-name').innerText = `Trade Chat w/ ${recipientName}`;
+    document.getElementById('chat-item-context').innerText = `Trade: ${offer.targetTitle} ↔ ${offer.offeredItem}`;
+
+    if (!chats[chatId]) {
+        chatsRef.child(chatId).push({
+            senderEmail: "system",
+            senderName: "System",
+            text: `Trade proposal channel created for ${offer.targetTitle}. Use this chat to discuss meetup locations!`,
+            timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        });
+    }
+
+    renderChatMessages();
+    document.getElementById('chat-modal').style.display = 'flex';
+}
+
+function closeChatModal() {
+    document.getElementById('chat-modal').style.display = 'none';
+    activeChatId = null;
+}
+
+function renderChatMessages() {
+    const container = document.getElementById('chat-messages-container');
+    if (!container || !activeChatId) return;
+
+    const currentChatObj = chats[activeChatId] || {};
+    const messageList = Object.keys(currentChatObj).map(k => currentChatObj[k]);
+
+    container.innerHTML = '';
+
+    messageList.forEach(msg => {
+        const msgDiv = document.createElement('div');
+        if (msg.senderEmail === 'system') {
+            msgDiv.className = 'chat-bubble chat-system';
+            msgDiv.innerHTML = `<span>${msg.text}</span>`;
+        } else {
+            const isMe = msg.senderEmail === currentUser.email;
+            msgDiv.className = `chat-bubble ${isMe ? 'chat-me' : 'chat-them'}`;
+            msgDiv.innerHTML = `
+                <div class="chat-sender-name">${isMe ? 'You' : msg.senderName}</div>
+                <div>${msg.text}</div>
+                <div class="chat-time">${msg.timestamp}</div>
+            `;
+        }
+        container.appendChild(msgDiv);
+    });
+
+    container.scrollTop = container.scrollHeight;
+}
+
+function handleSendChatMessage(e) {
+    e.preventDefault();
+    if (!currentUser || !activeChatId) return;
+
+    const input = document.getElementById('chat-input-text');
+    const text = input.value.trim();
+    if (!text) return;
+
+    chatsRef.child(activeChatId).push({
+        senderEmail: currentUser.email,
+        senderName: currentUser.fullName,
+        text: text,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    });
+
+    input.value = '';
+}
+
+// Meeting Acceptance Handlers
 function openAcceptanceModal(offerId) {
     document.getElementById('accepting-offer-id').value = offerId;
     document.getElementById('acceptance-form').reset();
@@ -651,31 +787,29 @@ function submitAcceptanceWithMeeting(e) {
     e.preventDefault();
 
     const offerId = document.getElementById('accepting-offer-id').value;
-    const offer = offers.find(o => o.id === offerId);
-    if (!offer) return;
-
     const loc = document.getElementById('accept-location-input').value.trim();
     const date = document.getElementById('accept-date').value;
     const time = document.getElementById('accept-time').value;
 
     if (!loc || !date || !time || !selectedPinCoords) {
-        return showErrorToast("Data Validation Error: Location, date, and time coordinates cannot be empty!");
+        return showErrorToast("Data Validation Error: Location, date, and time cannot be empty!");
     }
 
-    offer.status = "Accepted";
-    offer.meetingLocation = loc;
-    offer.meetingDate = date;
-    offer.meetingTime = time;
-    offer.additionalInstructions = document.getElementById('accept-instructions').value.trim();
-    offer.meetingCoordinates = selectedPinCoords;
-    
-    offer.meetingConfirmedBySeller = true; 
-    offer.meetingConfirmedByBuyer = false; 
-
-    saveData();
-    closeAcceptanceModal();
-    showSuccessToast("Trade Accepted & Meeting Parameters Linked!");
-    renderOffers();
+    offersRef.child(offerId).update({
+        status: "Accepted",
+        meetingLocation: loc,
+        meetingDate: date,
+        meetingTime: time,
+        additionalInstructions: document.getElementById('accept-instructions').value.trim(),
+        meetingCoordinates: selectedPinCoords,
+        meetingConfirmedBySeller: true,
+        meetingConfirmedByBuyer: false
+    }, (err) => {
+        if (!err) {
+            closeAcceptanceModal();
+            showSuccessToast("Trade Accepted & Meeting Parameters Linked!");
+        }
+    });
 }
 
 function openProposeLocationModal(offerId) {
@@ -696,22 +830,20 @@ function closeProposeLocationModal() {
 function submitLocationAdjustment(e) {
     e.preventDefault();
     const offerId = document.getElementById('adjust-offer-id').value;
-    const offer = offers.find(o => o.id === offerId);
 
-    if (offer) {
-        offer.meetingLocation = document.getElementById('adjust-location').value.trim();
-        offer.meetingDate = document.getElementById('adjust-date').value;
-        offer.meetingTime = document.getElementById('adjust-time').value;
-        offer.additionalInstructions = document.getElementById('adjust-notes').value.trim();
-
-        offer.meetingConfirmedByBuyer = true;
-        offer.meetingConfirmedBySeller = false;
-
-        saveData();
-        closeProposeLocationModal();
-        showSuccessToast("Proposed new location updated!");
-        renderOffers();
-    }
+    offersRef.child(offerId).update({
+        meetingLocation: document.getElementById('adjust-location').value.trim(),
+        meetingDate: document.getElementById('adjust-date').value,
+        meetingTime: document.getElementById('adjust-time').value,
+        additionalInstructions: document.getElementById('adjust-notes').value.trim(),
+        meetingConfirmedByBuyer: true,
+        meetingConfirmedBySeller: false
+    }, (err) => {
+        if (!err) {
+            closeProposeLocationModal();
+            showSuccessToast("Proposed new location updated!");
+        }
+    });
 }
 
 function openDirections(locationStr) {
@@ -746,16 +878,13 @@ function submitHandoverPin(e) {
         return showErrorToast("Invalid PIN entered!");
     }
 
-    offer.status = "Completed";
-    
-    const item = items.find(i => i.id === offer.targetItemId);
-    if (item) item.status = "CLOSED";
+    offersRef.child(offerId).update({ status: "Completed" });
+    if (offer.targetItemId) {
+        itemsRef.child(offer.targetItemId).update({ status: "CLOSED" });
+    }
 
-    saveData();
     closeOtpModal();
     showSuccessToast("Handover Verified! Trade is Completed.");
-    renderOffers();
-    applyFilters();
 }
 
 function loadProfileForm() {
@@ -767,7 +896,8 @@ function loadProfileForm() {
 function updateOfferCount() {
     if (!currentUser) return;
     const count = offers.filter(o => o.offeredByEmail === currentUser.email || o.sellerEmail === currentUser.email).length;
-    document.getElementById('offer-count').innerText = count;
+    const badge = document.getElementById('offer-count');
+    if (badge) badge.innerText = count;
 }
 
 // Initial session check

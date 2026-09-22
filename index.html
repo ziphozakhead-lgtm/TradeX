@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>TradeX - Safe Peer-to-Peer Barter & Trade</title>
     <link rel="stylesheet" href="styles.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
 
@@ -22,7 +21,7 @@
 
             <!-- LOGIN FORM -->
             <form id="login-form" class="auth-form" onsubmit="handleLogin(event)">
-                <h2>Welcome Back</h2>
+                <h2 style="font-size:1.4rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">Welcome Back</h2>
                 <p class="subtitle">Log in to manage your trades and proposals.</p>
                 
                 <div class="form-group">
@@ -40,7 +39,7 @@
 
             <!-- SIGN UP FORM -->
             <form id="signup-form" class="auth-form" style="display:none;" onsubmit="handleSignUp(event)">
-                <h2>Create TradeX Account</h2>
+                <h2 style="font-size:1.4rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">Create TradeX Account</h2>
                 <p class="subtitle">Sign up to manage your private barter trades securely.</p>
 
                 <div class="form-group">
@@ -55,7 +54,7 @@
 
                 <div class="form-group">
                     <label for="signup-phone">Mobile Phone Number *</label>
-                    <input type="tel" id="signup-phone" required placeholder="e.g. +1 555 0199">
+                    <input type="tel" id="signup-phone" required placeholder="e.g. +27 82 555 0199">
                 </div>
 
                 <div class="form-group">
@@ -76,7 +75,7 @@
     <!-- App Header -->
     <header class="app-header">
         <div class="logo-container">
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#0071e3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M16 3l4 4-4 4"/>
                 <path d="M20 7H4"/>
                 <path d="M8 21l-4-4 4-4"/>
@@ -98,11 +97,11 @@
     <!-- Main Viewports -->
     <main class="app-main">
         
-        <!-- EXPLORE TAB (HOME PAGE) -->
+        <!-- EXPLORE TAB (HOME PAGE TIMELINE) -->
         <section id="explore-tab" class="tab-content active">
             <div class="filter-card">
                 <div class="search-bar">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                     <input type="text" id="search-input" placeholder="Search items, tags, sellers, locations..." oninput="applyFilters()">
                 </div>
                 
@@ -144,13 +143,13 @@
         <!-- CREATE LISTING TAB -->
         <section id="post-tab" class="tab-content">
             <div class="form-card">
-                <h2>List Item for Trade</h2>
+                <h2 style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">List Item for Trade</h2>
                 <p class="subtitle">Describe your item clearly and what you are looking to swap for.</p>
 
                 <form id="post-item-form">
                     <div class="form-group">
                         <label for="seller-name">Your Display Name *</label>
-                        <input type="text" id="seller-name" required readonly style="background:#f1f5f9;">
+                        <input type="text" id="seller-name" required readonly style="background:#e5e5ea;">
                     </div>
 
                     <div class="form-group">
@@ -171,8 +170,8 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="item-price">Estimated Value ($) *</label>
-                            <input type="number" id="item-price" required min="1" placeholder="e.g. 250">
+                            <label for="item-price">Estimated Value (R) *</label>
+                            <input type="number" id="item-price" required min="1" placeholder="e.g. 2500">
                         </div>
                     </div>
 
@@ -203,24 +202,24 @@
 
         <!-- OFFERS TAB -->
         <section id="offers-tab" class="tab-content">
-            <div class="tab-header">
-                <h2>My Private Trade Proposals</h2>
-                <p class="subtitle">Review pending offers and manage agreed meeting points.</p>
+            <div class="tab-header" style="margin-bottom:1rem;">
+                <h2 style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">My Private Trade Proposals</h2>
+                <p class="subtitle">Review pending offers, chat with traders, and manage meeting points.</p>
             </div>
             <div id="offers-list" class="offers-container"></div>
         </section>
 
         <!-- SAFE ZONES TAB -->
         <section id="safezones-tab" class="tab-content">
-            <div class="tab-header">
-                <h2>Safe Exchange Zones</h2>
+            <div class="tab-header" style="margin-bottom:1rem;">
+                <h2 style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">Safe Exchange Zones</h2>
                 <p class="subtitle">Verified, public, high-security meetup locations in your city.</p>
             </div>
             
             <div class="safe-zone-card">
                 <div class="safe-zone-badge">VERIFIED SAFE ZONE</div>
-                <h3>Central Police Station - Forecourt Parking</h3>
-                <p>Public parking forecourt under 24/7 CCTV surveillance.</p>
+                <h3 style="font-size:1.05rem; font-weight:600; color:#1d1d1f; margin-top:0.2rem;">Central Police Station - Forecourt Parking</h3>
+                <p style="font-size:0.88rem; color:#6e6e73; margin-top:0.2rem;">Public parking forecourt under 24/7 CCTV surveillance.</p>
                 <div class="safe-zone-info">
                     <span>📍 100 Civic Center Plaza, Metro City</span>
                 </div>
@@ -228,8 +227,8 @@
 
             <div class="safe-zone-card">
                 <div class="safe-zone-badge">VERIFIED SAFE ZONE</div>
-                <h3>Grand Plaza Mall - Food Court Atrium</h3>
-                <p>High foot-traffic mall zone with security guards on duty.</p>
+                <h3 style="font-size:1.05rem; font-weight:600; color:#1d1d1f; margin-top:0.2rem;">Grand Plaza Mall - Food Court Atrium</h3>
+                <p style="font-size:0.88rem; color:#6e6e73; margin-top:0.2rem;">High foot-traffic mall zone with security guards on duty.</p>
                 <div class="safe-zone-info">
                     <span>📍 500 Main Boulevard, Metro City</span>
                 </div>
@@ -239,12 +238,12 @@
         <!-- PROFILE TAB -->
         <section id="profile-tab" class="tab-content">
             <div class="form-card">
-                <h2>User Trust Profile</h2>
+                <h2 style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">User Trust Profile</h2>
                 <div class="trust-score-badge">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#34c759" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
                     <div>
-                        <strong id="trust-rating-val">4.9 / 5.0 Trust Score</strong>
-                        <div id="trust-details-val" style="font-size:0.78rem; color:#64748b;">Verified ID & Phone</div>
+                        <strong id="trust-rating-val" style="color:#1d1d1f;">4.9 / 5.0 Trust Score</strong>
+                        <div id="trust-details-val" style="font-size:0.78rem; color:#8e8e93;">Verified ID & Phone</div>
                     </div>
                 </div>
 
@@ -256,7 +255,7 @@
 
                     <div class="form-group">
                         <label for="profile-email">Email Address *</label>
-                        <input type="email" id="profile-email" required readonly style="background:#f1f5f9;">
+                        <input type="email" id="profile-email" required readonly style="background:#e5e5ea;">
                     </div>
 
                     <button type="submit" class="submit-btn">Save Profile Settings</button>
@@ -310,13 +309,13 @@
     <div id="trade-modal" class="modal-overlay">
         <div class="modal-card">
             <button class="close-modal-btn" onclick="closeTradeModal()">&times;</button>
-            <h2 id="modal-item-title">Propose Trade Offer</h2>
+            <h2 id="modal-item-title" style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em; margin-bottom:1rem;">Propose Trade Offer</h2>
             <form id="trade-offer-form">
                 <input type="hidden" id="target-item-id">
                 
                 <div class="form-group">
                     <label for="offered-by-name">Your Name *</label>
-                    <input type="text" id="offered-by-name" required readonly style="background:#f1f5f9;">
+                    <input type="text" id="offered-by-name" required readonly style="background:#e5e5ea;">
                 </div>
 
                 <div class="form-group">
@@ -326,12 +325,12 @@
 
                 <div class="form-row">
                     <div class="form-group">
-                        <label for="offered-price">Estimated Value ($) *</label>
-                        <input type="number" id="offered-price" required min="1" placeholder="e.g. 300">
+                        <label for="offered-price">Estimated Value (R) *</label>
+                        <input type="number" id="offered-price" required min="1" placeholder="e.g. 3000">
                     </div>
                     <div class="form-group">
-                        <label for="offered-cash">Optional Cash Top-Up ($)</label>
-                        <input type="number" id="offered-cash" min="0" placeholder="e.g. 50">
+                        <label for="offered-cash">Optional Cash Top-Up (R)</label>
+                        <input type="number" id="offered-cash" min="0" placeholder="e.g. 500">
                     </div>
                 </div>
 
@@ -354,13 +353,12 @@
     <div id="acceptance-modal" class="modal-overlay">
         <div class="modal-card">
             <button class="close-modal-btn" onclick="closeAcceptanceModal()">&times;</button>
-            <h2>Set Meeting Point & Accept Trade</h2>
+            <h2 style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">Set Meeting Point & Accept Trade</h2>
             <p class="subtitle">Specify meeting parameters to finalize agreement.</p>
 
             <form id="acceptance-form" onsubmit="submitAcceptanceWithMeeting(event)">
                 <input type="hidden" id="accepting-offer-id">
 
-                <!-- Location Selector -->
                 <div class="form-group">
                     <label for="accept-location-input">Location Selection *</label>
                     <div style="display:flex; gap:0.5rem; margin-bottom:0.5rem;">
@@ -368,7 +366,6 @@
                         <button type="button" class="secondary-btn" style="flex:0 0 auto;" onclick="usePresetSafeZone()">Safe Zone Dropdown</button>
                     </div>
 
-                    <!-- Interactive Map Preview Simulator -->
                     <div class="map-container" id="accept-map-container" onclick="handleMapPinDrop(event)">
                         <div class="map-grid-overlay"></div>
                         <div class="map-pin" id="map-pin" style="top: 40%; left: 50%;">📍</div>
@@ -376,7 +373,6 @@
                     </div>
                 </div>
 
-                <!-- Date & Time Selection -->
                 <div class="form-row">
                     <div class="form-group">
                         <label for="accept-date">Meeting Date *</label>
@@ -388,26 +384,24 @@
                     </div>
                 </div>
 
-                <!-- Additional Instructions -->
                 <div class="form-group">
                     <label for="accept-instructions">Additional Instructions (Optional)</label>
                     <textarea id="accept-instructions" rows="2" placeholder="e.g. Meet near the main entrance next to security booth"></textarea>
                 </div>
 
-                <!-- Action Buttons -->
                 <div class="form-row" style="margin-top:1rem;">
                     <button type="button" class="secondary-btn" onclick="closeAcceptanceModal()">Cancel</button>
-                    <button type="submit" id="confirm-accept-btn" class="submit-btn" disabled style="background:#16a34a;">Confirm & Accept Trade</button>
+                    <button type="submit" id="confirm-accept-btn" class="submit-btn" disabled style="background:#34c759;">Confirm & Accept Trade</button>
                 </div>
             </form>
         </div>
     </div>
 
-    <!-- MODAL 4: PROPOSE NEW LOCATION / COUNTER-PROPOSAL -->
+    <!-- MODAL 4: PROPOSE NEW LOCATION -->
     <div id="propose-location-modal" class="modal-overlay">
         <div class="modal-card">
             <button class="close-modal-btn" onclick="closeProposeLocationModal()">&times;</button>
-            <h2>Propose New Location / Time</h2>
+            <h2 style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">Propose New Location / Time</h2>
             <p class="subtitle">Adjust parameters without reverting trade status to Pending.</p>
 
             <form id="propose-location-form" onsubmit="submitLocationAdjustment(event)">
@@ -443,16 +437,16 @@
     <div id="otp-modal" class="modal-overlay">
         <div class="modal-card">
             <button class="close-modal-btn" onclick="closeOtpModal()">&times;</button>
-            <h2>In-Person Handover Verification</h2>
+            <h2 style="font-size:1.3rem; font-weight:700; color:#1d1d1f; letter-spacing:-0.02em;">In-Person Handover Verification</h2>
             <p class="subtitle">Inspect both items physically before exchanging codes.</p>
 
             <div class="otp-display-box">
                 <div class="otp-role-label">Your Unique Release PIN</div>
                 <div class="otp-code" id="my-otp-display">----</div>
-                <p style="font-size:0.75rem; color:#64748b; margin-top:0.25rem;">Hand this PIN to trader AFTER inspecting item.</p>
+                <p style="font-size:0.75rem; color:#8e8e93; margin-top:0.25rem;">Hand this PIN to trader AFTER inspecting item.</p>
             </div>
 
-            <hr style="margin:1.25rem 0; border:0; border-top:1px solid #e2e8f0;">
+            <hr style="margin:1.25rem 0; border:0; border-top:1px solid #e5e5ea;">
 
             <form id="otp-verification-form" onsubmit="submitHandoverPin(event)">
                 <input type="hidden" id="otp-offer-id">
@@ -461,11 +455,40 @@
                     <input type="text" id="received-pin-input" required maxlength="4" placeholder="e.g. 4821" style="font-size:1.5rem; text-align:center; letter-spacing:0.3rem;">
                 </div>
 
-                <button type="submit" class="submit-btn" style="background:#2563eb; margin-top:1rem;">Verify PIN & Complete Trade</button>
+                <button type="submit" class="submit-btn" style="background:#0071e3; margin-top:1rem;">Verify PIN & Complete Trade</button>
             </form>
         </div>
     </div>
 
+    <!-- MODAL 6: LIVE CHAT MODAL -->
+    <div id="chat-modal" class="modal-overlay">
+        <div class="modal-card chat-modal-card">
+            <button class="close-modal-btn" onclick="closeChatModal()">&times;</button>
+            
+            <div class="chat-header">
+                <h3 id="chat-recipient-name">Trader Chat</h3>
+                <span id="chat-item-context" class="chat-subtitle">Context: Trade Discussion</span>
+            </div>
+
+            <div id="chat-messages-container" class="chat-messages-container">
+                <!-- Chat messages will be dynamically injected here -->
+            </div>
+
+            <form id="chat-send-form" class="chat-input-row" onsubmit="handleSendChatMessage(event)">
+                <input type="text" id="chat-input-text" placeholder="Type a message..." autocomplete="off" required>
+                <button type="submit" class="chat-send-btn">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <line x1="22" y1="2" x2="11" y2="13"></line>
+                        <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase SDK Imports -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
     <script src="app.js"></script>
 </body>
 </html>
