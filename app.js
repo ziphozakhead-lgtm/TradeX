@@ -68,39 +68,47 @@ function saveLocalData() {
 }
 
 function setupEventListeners() {
-    // 1. Intercept ALL Form Submissions globally (Prevents accidental reloads/clearing)
+    // 1. Intercept Form Submissions globally
     document.addEventListener('submit', (e) => {
-        e.preventDefault(); // Stop HTML default submit/reset behavior
-        
         if (e.target.id === 'post-item-form') {
+            e.preventDefault();
             handleCreateListing(e);
-        } else {
-            // Treat any other submitted form as a login attempt
-            handleLogin(e);
         }
     });
 
-    // 2. Global Click Delegation for Nav, Login/Logout, and Triggers
+    // 2. Global Click Delegation for Nav, Login/Logout, and Actions
     document.addEventListener('click', (e) => {
         const target = e.target;
 
-        // Login buttons
-        if (target.matches('#btn-login, .btn-login, [data-action="login"]')) {
+        // Login button click
+        if (target.closest('#btn-login, .btn-login')) {
             e.preventDefault();
             handleLogin(e);
             return;
         }
 
-        // Logout buttons
-        if (target.matches('#btn-logout, .btn-logout, [data-action="logout"]')) {
+        // Logout button click
+        if (target.closest('#btn-logout, .btn-logout')) {
             e.preventDefault();
             handleLogout();
             return;
         }
 
-        // Navigation bar tabs
+        // Make offer button click
+        const tradeBtn = target.closest('.btn-trade');
+        if (tradeBtn) {
+            e.preventDefault();
+            const itemId = tradeBtn.getAttribute('data-id');
+            if (itemId) {
+                handleOffer(itemId);
+            }
+            return;
+        }
+
+        // Bottom Navigation bar tabs
         const navBtn = target.closest('.bottom-nav-btn');
         if (navBtn) {
+            e.preventDefault();
             const targetTab = navBtn.getAttribute('data-tab');
             if (targetTab) {
                 switchTab(targetTab, navBtn);
@@ -116,27 +124,23 @@ function setupEventListeners() {
 }
 
 /* ==========================================================================
-   AUTHENTICATION LOGIC (HYBRID: READS INPUTS OR FALLS BACK TO PROMPT)
+   AUTHENTICATION LOGIC
    ========================================================================== */
 
 function handleLogin(e) {
     if (e) e.preventDefault();
 
-    // Check if on-screen HTML inputs exist for name/email
     const nameInput = document.getElementById('login-name') || 
                       document.getElementById('user-name') || 
-                      document.getElementById('username') || 
-                      document.querySelector('input[type="text"]');
+                      document.getElementById('username');
 
     const emailInput = document.getElementById('login-email') || 
                        document.getElementById('user-email') || 
-                       document.getElementById('email') || 
-                       document.querySelector('input[type="email"]');
+                       document.getElementById('email');
 
     let name = nameInput ? nameInput.value.trim() : '';
     let email = emailInput ? emailInput.value.trim() : '';
 
-    // If no inputs were filled out or found, ask via prompts
     if (!name) {
         name = prompt("Enter your name to sign in / trade:");
     }
@@ -157,11 +161,6 @@ function handleLogin(e) {
     saveLocalData();
     updateUserUI();
     showSuccessToast(`Logged in as ${currentUser.fullName}`);
-
-    // Hide any login modals if present
-    const modal = document.querySelector('.modal, #login-modal');
-    if (modal) modal.style.display = 'none';
-
     return true;
 }
 
@@ -233,26 +232,22 @@ async function handleCreateListing(e) {
         timestamp: new Date().toISOString()
     };
 
-    // 1. Add locally and re-render grid
     items.unshift(newItem);
     saveLocalData();
     applyFilters();
 
-    // 2. Sync to Firebase if connected
     if (isFirebaseConnected && db) {
         db.ref('items/' + newItem.id).set(newItem).catch((err) => {
             console.warn("Firebase save warning: Saved locally.", err);
         });
     }
 
-    // Reset Form
     const postForm = document.getElementById('post-item-form');
     if (postForm) postForm.reset();
 
     showSuccessToast("Listing published! Now visible on Explore screen.");
 
-    // Redirect to Explore view
-    const exploreBtn = document.querySelectorAll('.bottom-nav-btn')[0];
+    const exploreBtn = document.querySelector('.bottom-nav-btn[data-tab="explore-tab"]');
     switchTab('explore-tab', exploreBtn);
 }
 
@@ -276,9 +271,13 @@ function switchTab(tabId, targetBtn) {
     const selectedTab = document.getElementById(tabId);
     if (selectedTab) selectedTab.classList.add('active');
 
+    document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
+    
     if (targetBtn) {
-        document.querySelectorAll('.bottom-nav-btn').forEach(b => b.classList.remove('active'));
         targetBtn.classList.add('active');
+    } else {
+        const matchingBtn = document.querySelector(`.bottom-nav-btn[data-tab="${tabId}"]`);
+        if (matchingBtn) matchingBtn.classList.add('active');
     }
 
     if (tabId === 'explore-tab') {
@@ -317,7 +316,7 @@ function renderItemsGrid(itemsToRender) {
 
     if (itemsToRender.length === 0) {
         gridContainer.innerHTML = `
-            <div class="empty-state" style="text-align: center; padding: 40px 20px; color: #666;">
+            <div class="empty-state" style="text-align: center; padding: 40px 20px; color: #666; grid-column: 1/-1;">
                 <p>No listings found. Be the first to post something!</p>
             </div>
         `;
@@ -343,7 +342,7 @@ function renderItemsGrid(itemsToRender) {
                 </div>
                 <div class="card-footer">
                     <small>Posted by ${escapeHtml(item.sellerName)}</small>
-                    <button type="button" onclick="handleOffer('${item.id}')" class="btn-trade">Make Offer</button>
+                    <button type="button" data-id="${item.id}" class="btn-trade">Make Offer</button>
                 </div>
             </div>
         </div>
@@ -363,7 +362,7 @@ function handleOffer(itemId) {
 }
 
 /* ==========================================================================
-   UTILITY & FIREBASE / GEOLOCATION
+   UTILITY & GEOLOCATION / FIREBASE
    ========================================================================== */
 
 function syncWithFirebase() {
