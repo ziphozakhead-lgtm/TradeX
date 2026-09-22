@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barter & Trade SA</title>
+    <title>TradeMarket SA — Local Barter & Trade</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -11,32 +11,44 @@
     <!-- Header -->
     <header class="app-header">
         <div class="logo-container">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4"/>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M16 3l4 4-4 4"/>
+                <path d="M20 7H4"/>
+                <path d="M8 21l-4-4 4-4"/>
+                <path d="M4 17h16"/>
             </svg>
             <h1>TradeMarket SA</h1>
         </div>
-        <div class="header-actions">
-            <button id="btn-gps-toggle" class="location-chip">📍 Near Me</button>
-            <div id="auth-status" class="auth-status"></div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <button id="btn-gps-toggle" class="location-chip">
+                <span>📍 Nearby</span>
+            </button>
+            <div id="auth-status"></div>
         </div>
     </header>
 
-    <!-- Main Container -->
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Main Views -->
     <main class="app-main">
 
-        <!-- TAB 1: Explore Screen -->
+        <!-- TAB 1: EXPLORE MARKETPLACE -->
         <section id="explore-tab" class="tab-content active">
             <div class="filter-card">
                 <div class="search-bar">
-                    <input type="text" id="search-input" placeholder="Search items, locations..." />
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" id="search-input" placeholder="Search listings, locations, keywords..." />
                 </div>
                 <div class="filter-grid">
                     <select id="category-filter">
                         <option value="all">All Categories</option>
-                        <option value="clothing">Clothing</option>
-                        <option value="electronics">Electronics</option>
-                        <option value="general">General</option>
+                        <option value="clothing">Clothing & Apparel</option>
+                        <option value="electronics">Electronics & Tech</option>
+                        <option value="general">General Goods</option>
                     </select>
                     <select id="distance-filter">
                         <option value="all">Any Distance</option>
@@ -48,18 +60,20 @@
             </div>
 
             <div id="items-grid" class="item-grid">
-                <!-- Dynamically rendered item cards -->
+                <!-- Listing cards rendered dynamically -->
             </div>
         </section>
 
-        <!-- TAB 2: Post Item Form -->
+        <!-- TAB 2: POST ITEM LISTING -->
         <section id="post-tab" class="tab-content">
             <div class="form-card">
-                <h2>List an Item for Trade</h2>
+                <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 0.25rem;">List an Item for Trade</h2>
+                <p class="subtitle">Post an item you want to swap with local traders.</p>
+                
                 <form id="post-item-form">
                     <div class="form-group">
                         <label for="item-title">Item Title *</label>
-                        <input type="text" id="item-title" required placeholder="e.g. Vintage Leather Jacket">
+                        <input type="text" id="item-title" required placeholder="e.g. Leather Jacket or Gaming Console">
                     </div>
 
                     <div class="form-row">
@@ -72,8 +86,8 @@
                             </select>
                         </div>
                         <div class="form-group" style="flex: 1;">
-                            <label for="item-price">Valuation (R) *</label>
-                            <input type="number" id="item-price" min="0" step="10" placeholder="e.g. 450" required>
+                            <label for="item-price">Estimated Value (R) *</label>
+                            <input type="number" id="item-price" min="0" step="10" placeholder="e.g. 850" required>
                         </div>
                     </div>
 
@@ -89,69 +103,97 @@
 
                     <div class="form-group">
                         <label for="item-desc">Description *</label>
-                        <textarea id="item-desc" rows="3" required placeholder="Describe condition, details, etc."></textarea>
+                        <textarea id="item-desc" rows="3" required placeholder="Describe condition, size, features..."></textarea>
                     </div>
 
                     <div class="form-group">
                         <label for="item-wanted">What do you want in return?</label>
-                        <input type="text" id="item-wanted" placeholder="e.g. Looking for boots size 8 or mechanical keyboard">
+                        <input type="text" id="item-wanted" placeholder="e.g. Looking for size 8 boots or monitor arm">
                     </div>
 
-                    <button type="submit" class="submit-btn">Publish Trade Listing</button>
+                    <button type="submit" class="submit-btn">Publish Listing</button>
                 </form>
             </div>
         </section>
 
-        <!-- TAB 3: Trades & Offers Manager -->
+        <!-- TAB 3: TRADES & OFFERS -->
         <section id="trades-tab" class="tab-content">
-            <h2 style="margin-bottom: 1rem;">Active Offers & Counter-Offers</h2>
+            <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 0.25rem;">Trade Offers & Counter-Offers</h2>
+            <p class="subtitle">Manage incoming offers, cash top-ups, and chat with buyers.</p>
             <div id="offers-list" class="offers-container">
-                <!-- Dynamically rendered offer cards -->
+                <!-- Offers rendered dynamically -->
             </div>
         </section>
 
-        <!-- TAB 4: Profile / Account Settings -->
+        <!-- TAB 4: ACCOUNT MANAGEMENT -->
         <section id="profile-tab" class="tab-content">
             <div class="form-card">
-                <h2>Manage Account</h2>
+                <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 0.25rem;">User Account</h2>
                 <div id="profile-details-container">
-                    <!-- Account info rendered here -->
+                    <!-- User profile details rendered dynamically -->
                 </div>
             </div>
         </section>
 
     </main>
 
-    <!-- Modal: Make / Counter Offer -->
-    <div id="offer-modal" class="modal-overlay">
+    <!-- IN-APP MODAL: AUTHENTICATION (LOGIN / REGISTER) -->
+    <div id="auth-modal" class="modal-overlay">
         <div class="modal-card">
-            <button class="close-modal-btn" onclick="closeModal('offer-modal')">&times;</button>
-            <h3 id="offer-modal-title">Make an Offer</h3>
-            <form id="offer-form" style="margin-top: 1rem;">
-                <input type="hidden" id="offer-target-item-id">
+            <button type="button" class="close-modal-btn" onclick="closeModal('auth-modal')">&times;</button>
+            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.25rem;">Sign In to TradeMarket</h3>
+            <p class="subtitle">Enter your account details to start trading.</p>
+            
+            <form id="auth-form" style="margin-top: 1rem;">
                 <div class="form-group">
-                    <label>Your Item to Trade (Optional)</label>
-                    <select id="offer-my-item">
-                        <option value="">-- Select an item from your listings --</option>
-                    </select>
+                    <label for="auth-name">Full Name *</label>
+                    <input type="text" id="auth-name" required placeholder="e.g. Sarah Jenkins">
                 </div>
                 <div class="form-group">
-                    <label>Add Cash Top-Up (Rands)</label>
-                    <input type="number" id="offer-cash-topup" min="0" placeholder="e.g. 150">
+                    <label for="auth-email">Email Address *</label>
+                    <input type="email" id="auth-email" required placeholder="e.g. sarah@example.com">
                 </div>
-                <div class="form-group">
-                    <label>Message to Trader</label>
-                    <textarea id="offer-message" rows="3" placeholder="Propose your terms or ask a question..."></textarea>
-                </div>
-                <button type="submit" class="submit-btn">Submit Offer</button>
+                <button type="submit" class="submit-btn">Sign In / Continue</button>
             </form>
         </div>
     </div>
 
-    <!-- Modal: Live Chat -->
+    <!-- IN-APP MODAL: MAKE / COUNTER OFFER -->
+    <div id="offer-modal" class="modal-overlay">
+        <div class="modal-card">
+            <button type="button" class="close-modal-btn" onclick="closeModal('offer-modal')">&times;</button>
+            <h3 id="offer-modal-title" style="font-size: 1.15rem; font-weight: 700;">Make a Trade Offer</h3>
+            <p class="subtitle">Select an item to trade or offer a cash top-up in Rands.</p>
+
+            <form id="offer-form" style="margin-top: 1rem;">
+                <input type="hidden" id="offer-target-item-id">
+                
+                <div class="form-group">
+                    <label>Your Item to Trade (Optional)</label>
+                    <select id="offer-my-item">
+                        <option value="">-- Direct Cash / Top-Up Only --</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Add Cash Top-Up (Rands)</label>
+                    <input type="number" id="offer-cash-topup" min="0" step="10" placeholder="e.g. 150">
+                </div>
+
+                <div class="form-group">
+                    <label>Message to Trader</label>
+                    <textarea id="offer-message" rows="3" placeholder="Explain your proposal or propose meetup locations..."></textarea>
+                </div>
+
+                <button type="submit" class="submit-btn">Send Proposal</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- IN-APP MODAL: LIVE CHAT -->
     <div id="chat-modal" class="modal-overlay">
         <div class="modal-card chat-modal-card">
-            <button class="close-modal-btn" onclick="closeModal('chat-modal')">&times;</button>
+            <button type="button" class="close-modal-btn" onclick="closeModal('chat-modal')">&times;</button>
             <div class="chat-header">
                 <h3 id="chat-target-name">Chat</h3>
                 <span id="chat-item-title" class="chat-subtitle">Item Trade Discussion</span>
@@ -164,27 +206,32 @@
         </div>
     </div>
 
-    <!-- Modal: Meetup Setup -->
+    <!-- IN-APP MODAL: SCHEDULING MEETUP -->
     <div id="meetup-modal" class="modal-overlay">
         <div class="modal-card">
-            <button class="close-modal-btn" onclick="closeModal('meetup-modal')">&times;</button>
-            <h3>Schedule Meetup & Exchange</h3>
-            <p class="subtitle">Select a safe zone and time for the physical trade.</p>
+            <button type="button" class="close-modal-btn" onclick="closeModal('meetup-modal')">&times;</button>
+            <h3 style="font-size: 1.15rem; font-weight: 700;">Schedule Safe Meetup</h3>
+            <p class="subtitle">Set a time and safe zone for the physical exchange.</p>
+
             <form id="meetup-form" style="margin-top: 1rem;">
                 <input type="hidden" id="meetup-offer-id">
+
                 <div class="form-group">
-                    <label>Exchange Location / Safe Zone</label>
-                    <input type="text" id="meetup-location" required placeholder="e.g. Police Station / Malls Safe Exchange Zone">
+                    <label>Safe Exchange Location *</label>
+                    <input type="text" id="meetup-location" required placeholder="e.g. Rosebank Mall Safe Exchange Zone / Police Station">
                 </div>
+
                 <div class="form-group">
-                    <label>Date & Time</label>
+                    <label>Date & Time *</label>
                     <input type="datetime-local" id="meetup-datetime" required>
                 </div>
+
                 <div class="form-group">
-                    <label>Additional Notes</label>
-                    <textarea id="meetup-notes" rows="2" placeholder="e.g. Let's meet near the main entrance coffee shop."></textarea>
+                    <label>Additional Instructions</label>
+                    <textarea id="meetup-notes" rows="2" placeholder="e.g. Let's meet right outside the main coffee shop entrance."></textarea>
                 </div>
-                <button type="submit" class="submit-btn">Confirm Meetup</button>
+
+                <button type="submit" class="submit-btn">Confirm Exchange Schedule</button>
             </form>
         </div>
     </div>
@@ -192,18 +239,39 @@
     <!-- Bottom Navigation Bar -->
     <nav class="bottom-nav">
         <button type="button" class="bottom-nav-btn active" data-tab="explore-tab">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7" rx="1"></rect>
+                <rect x="14" y="3" width="7" height="7" rx="1"></rect>
+                <rect x="14" y="14" width="7" height="7" rx="1"></rect>
+                <rect x="3" y="14" width="7" height="7" rx="1"></rect>
+            </svg>
             <span>Explore</span>
         </button>
         <button type="button" class="bottom-nav-btn" data-tab="post-tab">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="16"></line>
+                <line x1="8" y1="12" x2="16" y2="12"></line>
+            </svg>
             <span>List Item</span>
         </button>
         <button type="button" class="bottom-nav-btn" data-tab="trades-tab">
-            <span class="nav-badge-wrapper">
-                Trades
+            <div class="nav-badge-wrapper">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M17 1l4 4-4 4"></path>
+                    <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                    <path d="M7 23l-4-4 4-4"></path>
+                    <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                </svg>
                 <span id="trades-badge" class="badge-count" style="display:none;">0</span>
-            </span>
+            </div>
+            <span>Trades</span>
         </button>
         <button type="button" class="bottom-nav-btn" data-tab="profile-tab">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+            </svg>
             <span>Account</span>
         </button>
     </nav>
@@ -212,7 +280,7 @@
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
-    <!-- Application Script -->
+    <!-- Main Logic -->
     <script src="app.js"></script>
 </body>
 </html>
