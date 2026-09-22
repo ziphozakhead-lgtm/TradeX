@@ -156,26 +156,76 @@ function setupEventListeners() {
    AUTHENTICATION & PROFILE MANAGEMENT
    ========================================================================== */
 
-function handleAuthSubmit() {
-    const nameInput = document.getElementById('auth-name').value.trim();
-    const emailInput = document.getElementById('auth-email').value.trim().toLowerCase();
+function toggleAuthMode() {
+    const modeInput = document.getElementById('auth-mode');
+    const titleEl = document.getElementById('auth-modal-title');
+    const subtitleEl = document.getElementById('auth-modal-subtitle');
+    const submitBtn = document.getElementById('auth-submit-btn');
+    const toggleText = document.getElementById('auth-toggle-text');
+    const toggleBtn = document.getElementById('auth-toggle-btn');
+    const nameGroup = document.getElementById('auth-name-group');
+    const nameInput = document.getElementById('auth-name');
 
-    if (!nameInput || !emailInput) {
-        showToast("Please complete both fields.");
+    if (modeInput.value === 'login') {
+        modeInput.value = 'signup';
+        titleEl.textContent = 'Create an Account';
+        subtitleEl.textContent = 'Sign up to start listing and trading items.';
+        submitBtn.textContent = 'Sign Up';
+        toggleText.textContent = 'Already have an account?';
+        toggleBtn.textContent = 'Sign In';
+        nameGroup.style.display = 'block';
+        nameInput.required = true;
+    } else {
+        modeInput.value = 'login';
+        titleEl.textContent = 'Sign In to TradeMarket';
+        subtitleEl.textContent = 'Enter your details to log into your account.';
+        submitBtn.textContent = 'Sign In';
+        toggleText.textContent = "Don't have an account?";
+        toggleBtn.textContent = 'Sign Up';
+        nameGroup.style.display = 'none';
+        nameInput.required = false;
+    }
+}
+
+function handleAuthSubmit() {
+    const mode = document.getElementById('auth-mode').value;
+    const emailInput = document.getElementById('auth-email').value.trim().toLowerCase();
+    const passwordInput = document.getElementById('auth-password').value;
+    const nameInput = document.getElementById('auth-name').value.trim();
+
+    if (!emailInput || !passwordInput) {
+        showToast("Please fill in email and password.");
         return;
     }
 
-    currentUser = {
-        fullName: nameInput,
-        email: emailInput
-    };
+    if (mode === 'signup') {
+        if (!nameInput) {
+            showToast("Please provide your full name.");
+            return;
+        }
+        currentUser = {
+            fullName: nameInput,
+            email: emailInput
+        };
+        showToast(`Account created! Welcome ${currentUser.fullName}`);
+    } else {
+        // Sign In
+        const displayName = nameInput || emailInput.split('@')[0];
+        currentUser = {
+            fullName: displayName.charAt(0).toUpperCase() + displayName.slice(1),
+            email: emailInput
+        };
+        showToast(`Logged in as ${currentUser.fullName}`);
+    }
 
     saveLocalData();
     updateUserUI();
     renderProfileView();
     renderOffersList();
     closeModal('auth-modal');
-    showToast(`Logged in as ${currentUser.fullName}`);
+
+    // Reset Form
+    document.getElementById('auth-form').reset();
 }
 
 function handleLogout() {
@@ -199,7 +249,7 @@ function updateUserUI() {
         `;
     } else {
         authStatusElement.innerHTML = `
-            <button type="button" class="user-chip btn-login-trigger">Sign In</button>
+            <button type="button" class="user-chip btn-login-trigger">Sign In / Sign Up</button>
         `;
     }
 }
@@ -212,7 +262,7 @@ function renderProfileView() {
         container.innerHTML = `
             <div style="text-align: center; padding: 20px 0;">
                 <p style="color: #6e6e73; margin-bottom: 1rem;">You are currently browsing as a guest.</p>
-                <button type="button" class="submit-btn btn-login-trigger" style="max-width: 240px; margin: 0 auto;">Sign In / Register</button>
+                <button type="button" class="submit-btn btn-login-trigger" style="max-width: 240px; margin: 0 auto;">Sign In / Sign Up</button>
             </div>
         `;
         return;
@@ -330,15 +380,17 @@ async function handleCreateListing() {
         timestamp: new Date().toISOString()
     };
 
-    items.unshift(newItem);
-    saveLocalData();
-
+    // Save globally to Firebase database so all users receive it instantly
     if (isFirebaseConnected && db) {
         db.ref('items/' + newItem.id).set(newItem);
+    } else {
+        items.unshift(newItem);
+        saveLocalData();
+        applyFilters();
     }
 
     document.getElementById('post-item-form').reset();
-    showToast("Listing published in South African Rands!");
+    showToast("Listing published across the network!");
     renderProfileView();
 
     const exploreBtn = document.querySelector('.bottom-nav-btn[data-tab="explore-tab"]');
@@ -418,10 +470,10 @@ function renderItemsGrid(itemsToRender) {
 }
 
 /* ==========================================================================
-   OFFERS, COUNTER-OFFERS & CASH TOP-UPS
+   OFFERS, COUNTER-OFFERS & NEGOTIATIONS
    ========================================================================== */
 
-function openOfferModal(targetItemId) {
+function openOfferModal(targetItemId, parentOfferId = null) {
     if (!currentUser) {
         openModal('auth-modal');
         return;
@@ -430,13 +482,23 @@ function openOfferModal(targetItemId) {
     const targetItem = items.find(i => i.id === targetItemId);
     if (!targetItem) return;
 
-    if (targetItem.sellerEmail === currentUser.email) {
+    if (!parentOfferId && targetItem.sellerEmail === currentUser.email) {
         showToast("You cannot offer on your own listing.");
         return;
     }
 
     document.getElementById('offer-target-item-id').value = targetItemId;
-    document.getElementById('offer-modal-title').textContent = `Offer for: ${targetItem.title} (R ${targetItem.price})`;
+    document.getElementById('offer-parent-id').value = parentOfferId || '';
+
+    if (parentOfferId) {
+        document.getElementById('offer-modal-title').textContent = `Negotiate / Counter Offer`;
+        document.getElementById('offer-modal-subtitle').textContent = `Propose new terms for: ${targetItem.title}`;
+        document.getElementById('offer-submit-btn').textContent = "Send Counter-Offer";
+    } else {
+        document.getElementById('offer-modal-title').textContent = `Offer for: ${targetItem.title} (R ${targetItem.price})`;
+        document.getElementById('offer-modal-subtitle').textContent = `Select an item to trade or offer a cash top-up in Rands.`;
+        document.getElementById('offer-submit-btn').textContent = "Send Proposal";
+    }
 
     const selectEl = document.getElementById('offer-my-item');
     const myItems = items.filter(i => i.sellerEmail === currentUser.email && i.status === 'OPEN');
@@ -447,8 +509,15 @@ function openOfferModal(targetItemId) {
     openModal('offer-modal');
 }
 
+function openNegotiateModal(offerId) {
+    const offer = offers.find(o => o.id === offerId);
+    if (!offer) return;
+    openOfferModal(offer.targetItemId, offer.id);
+}
+
 function handleOfferSubmit() {
     const targetItemId = document.getElementById('offer-target-item-id').value;
+    const parentOfferId = document.getElementById('offer-parent-id').value;
     const myItemId = document.getElementById('offer-my-item').value;
     const cashTopup = parseFloat(document.getElementById('offer-cash-topup').value) || 0;
     const message = document.getElementById('offer-message').value.trim();
@@ -456,11 +525,23 @@ function handleOfferSubmit() {
     const targetItem = items.find(i => i.id === targetItemId);
     const myItem = items.find(i => i.id === myItemId);
 
+    let recipientEmail = targetItem.sellerEmail;
+    if (parentOfferId) {
+        const parentOffer = offers.find(o => o.id === parentOfferId);
+        if (parentOffer) {
+            recipientEmail = parentOffer.buyerEmail === currentUser.email ? parentOffer.sellerEmail : parentOffer.buyerEmail;
+            parentOffer.status = 'COUNTERED';
+            if (isFirebaseConnected && db) {
+                db.ref('offers/' + parentOffer.id + '/status').set('COUNTERED');
+            }
+        }
+    }
+
     const newOffer = {
         id: 'offer_' + Date.now(),
         targetItemId: targetItem.id,
         targetItemTitle: targetItem.title,
-        sellerEmail: targetItem.sellerEmail,
+        sellerEmail: recipientEmail,
         buyerEmail: currentUser.email,
         buyerName: currentUser.fullName,
         offeredItemId: myItem ? myItem.id : null,
@@ -468,20 +549,21 @@ function handleOfferSubmit() {
         cashTopupRands: cashTopup,
         message: message,
         status: 'PENDING',
+        parentOfferId: parentOfferId || null,
         timestamp: new Date().toISOString()
     };
 
-    offers.unshift(newOffer);
-    saveLocalData();
-
     if (isFirebaseConnected && db) {
         db.ref('offers/' + newOffer.id).set(newOffer);
+    } else {
+        offers.unshift(newOffer);
+        saveLocalData();
+        renderOffersList();
     }
 
     closeModal('offer-modal');
     document.getElementById('offer-form').reset();
-    showToast("Trade proposal sent!");
-    renderOffersList();
+    showToast(parentOfferId ? "Counter-offer submitted!" : "Trade proposal sent!");
 }
 
 function renderOffersList() {
@@ -493,7 +575,7 @@ function renderOffersList() {
         container.innerHTML = `
             <div style="text-align: center; padding: 40px 20px;">
                 <p style="color: #6e6e73; margin-bottom: 1rem;">Sign in to review trade offers and proposals.</p>
-                <button type="button" class="submit-btn btn-login-trigger" style="max-width: 200px; margin: 0 auto;">Sign In</button>
+                <button type="button" class="submit-btn btn-login-trigger" style="max-width: 200px; margin: 0 auto;">Sign In / Sign Up</button>
             </div>
         `;
         if (badge) badge.style.display = 'none';
@@ -529,7 +611,7 @@ function renderOffersList() {
             <div class="offer-card">
                 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
                     <span class="badge" style="background: rgba(0,113,227,0.1); color: #0071e3;">${roleText}</span>
-                    <span style="font-size: 0.78rem; font-weight: 700; color: #ff9500;">${offer.status}</span>
+                    <span style="font-size: 0.78rem; font-weight: 700; color: ${offer.status === 'ACCEPTED' ? '#34c759' : '#ff9500'};">${offer.status}</span>
                 </div>
                 <h4 style="font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem;">${escapeHtml(offer.targetItemTitle)}</h4>
                 <div style="font-size: 0.85rem; color: #1d1d1f; line-height: 1.4;">
@@ -550,11 +632,14 @@ function renderOffersList() {
                     </div>
                 ` : ''}
 
-                <div class="card-actions" style="margin-top: 0.75rem; gap: 0.5rem;">
+                <div class="card-actions" style="margin-top: 0.75rem; gap: 0.5rem; flex-wrap: wrap;">
                     ${isSeller && offer.status === 'PENDING' ? `
-                        <button type="button" onclick="acceptOffer('${offer.id}')" class="accept-btn" style="flex:1;">Accept Offer</button>
+                        <button type="button" onclick="acceptOffer('${offer.id}')" class="accept-btn" style="flex:1;">Accept</button>
                     ` : ''}
-                    <button type="button" onclick="openChatModal('${offer.id}')" class="secondary-btn" style="flex:1;">💬 Message</button>
+                    ${offer.status === 'PENDING' ? `
+                        <button type="button" onclick="openNegotiateModal('${offer.id}')" class="secondary-btn" style="flex:1;">Negotiate</button>
+                    ` : ''}
+                    <button type="button" onclick="openChatModal('${offer.id}')" class="secondary-btn" style="flex:1;">💬 Chat</button>
                     ${offer.status === 'ACCEPTED' ? `
                         <button type="button" onclick="openMeetupModal('${offer.id}')" class="primary-btn" style="flex:1;">📍 Set Meetup</button>
                     ` : ''}
@@ -636,15 +721,15 @@ function handleSendChatMessage() {
         timestamp: new Date().toISOString()
     };
 
-    chatMessages[activeChatOfferId].push(newMessage);
-    saveLocalData();
-
     if (isFirebaseConnected && db) {
         db.ref(`chats/${activeChatOfferId}/${newMessage.id}`).set(newMessage);
+    } else {
+        chatMessages[activeChatOfferId].push(newMessage);
+        saveLocalData();
+        renderChatMessages();
     }
 
     input.value = '';
-    renderChatMessages();
 }
 
 /* ==========================================================================
@@ -665,22 +750,23 @@ function handleMeetupSubmit() {
     const offer = offers.find(o => o.id === offerId);
     if (!offer) return;
 
-    offer.meetup = {
+    const meetupData = {
         location: location,
         datetime: datetime,
         notes: notes,
         scheduledBy: currentUser.email
     };
 
-    saveLocalData();
-
     if (isFirebaseConnected && db) {
-        db.ref('offers/' + offerId + '/meetup').set(offer.meetup);
+        db.ref('offers/' + offerId + '/meetup').set(meetupData);
+    } else {
+        offer.meetup = meetupData;
+        saveLocalData();
+        renderOffersList();
     }
 
     closeModal('meetup-modal');
     showToast("Meetup details confirmed!");
-    renderOffersList();
 }
 
 /* ==========================================================================
@@ -722,10 +808,7 @@ function syncWithFirebase() {
     db.ref('items').on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
-            const firebaseItems = Object.keys(data).map(k => data[k]);
-            const map = new Map();
-            [...items, ...firebaseItems].forEach(item => map.set(item.id, item));
-            items = Array.from(map.values());
+            items = Object.keys(data).map(k => data[k]);
             saveLocalData();
             applyFilters();
         }
@@ -734,12 +817,18 @@ function syncWithFirebase() {
     db.ref('offers').on('value', (snapshot) => {
         const data = snapshot.val();
         if (data) {
-            const firebaseOffers = Object.keys(data).map(k => data[k]);
-            const map = new Map();
-            [...offers, ...firebaseOffers].forEach(offer => map.set(offer.id, offer));
-            offers = Array.from(map.values());
+            offers = Object.keys(data).map(k => data[k]);
             saveLocalData();
             renderOffersList();
+        }
+    });
+
+    db.ref('chats').on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            chatMessages = data;
+            saveLocalData();
+            if (activeChatOfferId) renderChatMessages();
         }
     });
 }
