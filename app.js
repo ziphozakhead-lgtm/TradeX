@@ -122,7 +122,7 @@ function setupEventListeners() {
     // Navigation Tabs
     const navButtons = document.querySelectorAll('.bottom-nav-btn');
     navButtons.forEach(btn => {
-        btn.addEventListener('click', (e) => {
+        btn.addEventListener('click', () => {
             const targetTab = btn.getAttribute('data-tab');
             if (targetTab) {
                 switchTab(targetTab, btn);
@@ -169,31 +169,38 @@ function updateUserUI() {
     const authStatusElement = document.getElementById('auth-status');
     if (authStatusElement) {
         if (currentUser) {
-            authStatusElement.innerHTML = `<span>Welcome, <strong>${currentUser.fullName}</strong></span>`;
+            authStatusElement.innerHTML = `<span>Welcome, <strong>${escapeHtml(currentUser.fullName)}</strong></span>`;
         } else {
-            authStatusElement.innerHTML = `<button onclick="checkAuthStatus()" class="btn-login">Login / Sign Up</button>`;
+            authStatusElement.innerHTML = `<button type="button" onclick="handleLoginClick(event)" class="btn-login">Login / Sign Up</button>`;
         }
     }
+}
+
+function handleLoginClick(e) {
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    checkAuthStatus();
 }
 
 function checkAuthStatus() {
     if (!currentUser) {
         const name = prompt("Enter your name to sign in / trade:");
+        if (!name) return false;
+
         const email = prompt("Enter your email address:");
-        
-        if (name && email) {
-            currentUser = {
-                fullName: name.trim(),
-                email: email.trim().toLowerCase()
-            };
-            saveLocalData();
-            updateUserUI();
-            showSuccessToast(`Logged in as ${currentUser.fullName}`);
-            return true;
-        } else {
-            alert("You must log in to create a listing.");
-            return false;
-        }
+        if (!email) return false;
+            
+        currentUser = {
+            fullName: name.trim(),
+            email: email.trim().toLowerCase()
+        };
+
+        saveLocalData();
+        updateUserUI();
+        showSuccessToast(`Logged in as ${currentUser.fullName}`);
+        return true;
     }
     return true;
 }
@@ -329,7 +336,7 @@ function renderItemsGrid(itemsToRender) {
                 </div>
                 <div class="card-footer">
                     <small>Posted by ${escapeHtml(item.sellerName)}</small>
-                    <button onclick="handleOffer('${item.id}')" class="btn-trade">Make Offer</button>
+                    <button type="button" onclick="handleOffer('${item.id}')" class="btn-trade">Make Offer</button>
                 </div>
             </div>
         </div>
