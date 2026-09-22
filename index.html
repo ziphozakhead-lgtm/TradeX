@@ -119,7 +119,7 @@
         <!-- TAB 3: TRADES & OFFERS -->
         <section id="trades-tab" class="tab-content">
             <h2 style="font-size: 1.3rem; font-weight: 700; margin-bottom: 0.25rem;">Trade Offers & Counter-Offers</h2>
-            <p class="subtitle">Manage incoming offers, cash top-ups, and chat with buyers.</p>
+            <p class="subtitle">Manage incoming offers, cash top-ups, negotiate, and chat with traders.</p>
             <div id="offers-list" class="offers-container">
                 <!-- Offers rendered dynamically -->
             </div>
@@ -141,20 +141,31 @@
     <div id="auth-modal" class="modal-overlay">
         <div class="modal-card">
             <button type="button" class="close-modal-btn" onclick="closeModal('auth-modal')">&times;</button>
-            <h3 style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.25rem;">Sign In to TradeMarket</h3>
-            <p class="subtitle">Enter your account details to start trading.</p>
+            <h3 id="auth-modal-title" style="font-size: 1.2rem; font-weight: 700; margin-bottom: 0.25rem;">Sign In to TradeMarket</h3>
+            <p id="auth-modal-subtitle" class="subtitle">Enter your details to log into your account.</p>
             
             <form id="auth-form" style="margin-top: 1rem;">
-                <div class="form-group">
+                <input type="hidden" id="auth-mode" value="login">
+                
+                <div class="form-group" id="auth-name-group" style="display: none;">
                     <label for="auth-name">Full Name *</label>
-                    <input type="text" id="auth-name" required placeholder="e.g. Sarah Jenkins">
+                    <input type="text" id="auth-name" placeholder="e.g. Sarah Jenkins">
                 </div>
                 <div class="form-group">
                     <label for="auth-email">Email Address *</label>
                     <input type="email" id="auth-email" required placeholder="e.g. sarah@example.com">
                 </div>
-                <button type="submit" class="submit-btn">Sign In / Continue</button>
+                <div class="form-group">
+                    <label for="auth-password">Password *</label>
+                    <input type="password" id="auth-password" required placeholder="Enter password">
+                </div>
+                <button type="submit" id="auth-submit-btn" class="submit-btn">Sign In</button>
             </form>
+
+            <div style="margin-top: 1rem; text-align: center; font-size: 0.85rem; color: #6e6e73;">
+                <span id="auth-toggle-text">Don't have an account?</span>
+                <button type="button" id="auth-toggle-btn" onclick="toggleAuthMode()" style="background: none; border: none; color: #0071e3; font-weight: 600; cursor: pointer; text-decoration: underline; margin-left: 4px;">Sign Up</button>
+            </div>
         </div>
     </div>
 
@@ -163,10 +174,11 @@
         <div class="modal-card">
             <button type="button" class="close-modal-btn" onclick="closeModal('offer-modal')">&times;</button>
             <h3 id="offer-modal-title" style="font-size: 1.15rem; font-weight: 700;">Make a Trade Offer</h3>
-            <p class="subtitle">Select an item to trade or offer a cash top-up in Rands.</p>
+            <p id="offer-modal-subtitle" class="subtitle">Select an item to trade or offer a cash top-up in Rands.</p>
 
             <form id="offer-form" style="margin-top: 1rem;">
                 <input type="hidden" id="offer-target-item-id">
+                <input type="hidden" id="offer-parent-id">
                 
                 <div class="form-group">
                     <label>Your Item to Trade (Optional)</label>
@@ -181,11 +193,11 @@
                 </div>
 
                 <div class="form-group">
-                    <label>Message to Trader</label>
-                    <textarea id="offer-message" rows="3" placeholder="Explain your proposal or propose meetup locations..."></textarea>
+                    <label>Message / Negotiation Terms</label>
+                    <textarea id="offer-message" rows="3" placeholder="Explain your proposal or propose meetup options..."></textarea>
                 </div>
 
-                <button type="submit" class="submit-btn">Send Proposal</button>
+                <button type="submit" id="offer-submit-btn" class="submit-btn">Send Proposal</button>
             </form>
         </div>
     </div>
